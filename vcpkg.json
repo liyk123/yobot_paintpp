@@ -1,0 +1,17 @@
+{
+  "dependencies": [
+    "spdlog",
+    {
+      "name": "cpp-httplib",
+      "default-features": false
+    },
+    {
+      "name": "sdl3",
+      "features": [ "vulkan" ]
+    },
+    {
+      "name": "sdl3-image",
+      "features": [ "png", "webp" ]
+    }
+  ]
+}
