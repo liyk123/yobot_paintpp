@@ -14,10 +14,14 @@ project (${PROJECT_NAME})
 
 set(FILE_LIST
     "main.cpp"
+    "yobot_paint.h" 
+    "yobot_paint.cpp"
 )
 
 find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
+find_package(SDL3 CONFIG REQUIRED)
+find_package(SDL3_image CONFIG REQUIRED)
 
 macro(get_git_hash _git_hash)
   find_package(Git QUIET)
@@ -67,12 +71,15 @@ set(GIT_DATE "unknown")
 get_git_date_time(GIT_DATE)
 add_definitions(-DGIT_DATE="${GIT_DATE}")
 
+add_definitions(-DPROJECT_NAME="${PROJECT_NAME}")
 
 add_executable(${PROJECT_NAME} ${FILE_LIST})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     spdlog::spdlog_header_only
     httplib::httplib
+    SDL3::SDL3
+    $<IF:$<TARGET_EXISTS:SDL3_image::SDL3_image-shared>,SDL3_image::SDL3_image-shared,SDL3_image::SDL3_image-static>
 )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
