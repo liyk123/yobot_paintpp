@@ -22,6 +22,7 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
+find_package(SDL3_ttf CONFIG REQUIRED)
 
 macro(get_git_hash _git_hash)
   find_package(Git QUIET)
@@ -80,6 +81,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     httplib::httplib
     SDL3::SDL3
     $<IF:$<TARGET_EXISTS:SDL3_image::SDL3_image-shared>,SDL3_image::SDL3_image-shared,SDL3_image::SDL3_image-static>
+    SDL3_ttf::SDL3_ttf
 )
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)

@@ -12,6 +12,10 @@
     {
       "name": "sdl3-image",
       "features": [ "png", "webp" ]
+    },
+    {
+      "name": "sdl3-ttf",
+      "features": [ "harfbuzz", "svg" ]
     }
   ]
 }
