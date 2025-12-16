@@ -1,4 +1,4 @@
-#include "yobot_paint.h"
+﻿#include "yobot_paint.h"
 #include <spdlog/spdlog.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3_image/SDL_image.h>
@@ -26,11 +26,18 @@ namespace yobot {
         return SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     }
 
+    inline bool SDLSetTextColor(TTF_Text* text, const SDL_Color& color)
+    {
+        return TTF_SetTextColor(text, color.r, color.g, color.b, color.a);
+    }
+
     constexpr auto windowSize = SDL_Point{ 480,640 };
-    constexpr auto white = SDL_Color{ 255,255,255,255 };
+    constexpr auto white = SDL_Color{ 255,255,255,224 };
     constexpr auto halfTransparent = SDL_Color{ 0,0,0,128 };
+    constexpr auto transparent = SDL_Color{ 0,0,0,0 };
     constexpr auto margin = SDL_Point{ 10,30 };
     constexpr auto clipRect = SDL_Rect{ margin.x, margin.y, windowSize.x - margin.x * 2, windowSize.y - margin.y * 2 };
+    constexpr auto panelRect = SDL_FRect{ 0.0f,0.0f,(float)clipRect.w,(float)clipRect.h };
 
     paint::paint() 
         : m_window(nullptr, &SDL_DestroyWindow)
@@ -65,13 +72,17 @@ namespace yobot {
         SDLSetDrawColor(m_renderer.get(), white);
         SDL_SetRenderViewport(m_renderer.get(), &clipRect);
         SDL_RenderFillRect(m_renderer.get(), nullptr);
-        auto panelRect = SDL_FRect{0.0f,0.0f,(float)clipRect.w,(float)clipRect.h};
         auto texture = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture->w / 8 * 5),(float)(texture->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
-        auto font = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-VariableFont_wght.ttf", 16));
-        SPDLOG_INFO("TTF_GetFontWeight {}", TTF_GetFontWeight(font.get()));
-        auto text = unique_sdl_text(TTF_CreateText(m_textEngine.get(), font.get(), "test", 4));
+        auto font = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 12));
+        auto lapFont = unique_sdl_font(TTF_CopyFont(font.get()));
+        TTF_SetFontSize(lapFont.get(), 18);
+        auto lapText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), lapFont.get(), "周目", 6));
+        SDLSetTextColor(lapText.get(), halfTransparent);
+        auto titleFont = unique_sdl_font(TTF_CopyFont(font.get()));
+        TTF_SetFontSize(titleFont.get(), 24);
+        auto phaseText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), titleFont.get(), "阶段", 6));
         for (int i = 5; i > 0; i--)
         {
             SDLSetDrawColor(m_renderer.get(), halfTransparent);
@@ -82,9 +93,16 @@ namespace yobot {
             HPRect.y = iconRect.y + iconRect.h / 5 * 2;
             SDL_RenderFillRect(m_renderer.get(), &HPRect);
             iconRect.y -= (float)margin.x;
-            SDLSetDrawColor(m_renderer.get(), white);
-            TTF_DrawRendererText(text.get(), HPRect.x + HPRect.w / 3, HPRect.y);
+            TTF_DrawRendererText(lapText.get(), HPRect.x, iconRect.y + margin.x);
         }
+        auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x - 2), iconRect.w, iconRect.y - margin.x * 2 };
+        SDLSetDrawColor(m_renderer.get(), transparent);
+        SDL_RenderFillRect(m_renderer.get(), &phaseRect);
+        TTF_DrawRendererText(phaseText.get(), panelRect.x + margin.x * 5 / 2, panelRect.y + margin.x / 2);
+        auto progressRect = SDL_FRect{ HPRect.x,phaseRect.y,HPRect.w,HPRect.h };
+        SDL_RenderFillRect(m_renderer.get(), &progressRect);
+        progressRect.y += margin.x *2 + HPRect.h;
+        SDL_RenderFillRect(m_renderer.get(), &progressRect);
         SDL_SetRenderViewport(m_renderer.get(), nullptr);
         auto oSurface = unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
         IMG_SavePNG(oSurface.get(), "test.png");
