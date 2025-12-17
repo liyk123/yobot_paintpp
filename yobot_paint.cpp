@@ -79,7 +79,6 @@ namespace yobot {
         auto lapFont = unique_sdl_font(TTF_CopyFont(font.get()));
         TTF_SetFontSize(lapFont.get(), 18);
         auto lapText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), lapFont.get(), "周目", 6));
-        SDLSetTextColor(lapText.get(), halfTransparent);
         auto titleFont = unique_sdl_font(TTF_CopyFont(font.get()));
         TTF_SetFontSize(titleFont.get(), 24);
         auto phaseText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), titleFont.get(), "阶段", 6));
@@ -93,15 +92,18 @@ namespace yobot {
             HPRect.y = iconRect.y + iconRect.h / 5 * 2;
             SDL_RenderFillRect(m_renderer.get(), &HPRect);
             iconRect.y -= (float)margin.x;
-            TTF_DrawRendererText(lapText.get(), HPRect.x, iconRect.y + margin.x);
+            auto lapRect = SDL_FRect{ HPRect.x, iconRect.y + margin.x + 4 , 18 * 4,22 };
+            SDLSetDrawColor(m_renderer.get(), transparent);
+            SDL_RenderFillRect(m_renderer.get(), &lapRect);
+            TTF_DrawRendererText(lapText.get(), HPRect.x + margin.x / 2, iconRect.y + margin.x);
         }
-        auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x - 2), iconRect.w, iconRect.y - margin.x * 2 };
+        auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 2 };
         SDLSetDrawColor(m_renderer.get(), transparent);
         SDL_RenderFillRect(m_renderer.get(), &phaseRect);
-        TTF_DrawRendererText(phaseText.get(), panelRect.x + margin.x * 5 / 2, panelRect.y + margin.x / 2);
-        auto progressRect = SDL_FRect{ HPRect.x,phaseRect.y,HPRect.w,HPRect.h };
+        TTF_DrawRendererText(phaseText.get(), panelRect.x + margin.x * 5 / 2, panelRect.y + margin.x / 2 + 2);
+        auto progressRect = SDL_FRect{ HPRect.x, phaseRect.y - margin.x / 5 * 2, HPRect.w, phaseRect.h / 2 };
         SDL_RenderFillRect(m_renderer.get(), &progressRect);
-        progressRect.y += margin.x *2 + HPRect.h;
+        progressRect.y += margin.x / 5 * 4 + progressRect.h;
         SDL_RenderFillRect(m_renderer.get(), &progressRect);
         SDL_SetRenderViewport(m_renderer.get(), nullptr);
         auto oSurface = unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
