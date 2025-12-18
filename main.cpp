@@ -2,6 +2,6 @@
 
 int main(int argc, char const *argv[])
 {
-    yobot::paint::getInstance().draw();
+    yobot::paint::getInstance().preparePanel();
     return 0;
 }
