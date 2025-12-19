@@ -3,6 +3,7 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <ranges>
 
 namespace yobot {
 
@@ -104,13 +105,40 @@ namespace yobot {
         SDL_RenderFillRect(m_renderer.get(), &progressRect);
         progressRect.y += margin.x / 5 * 4 + progressRect.h;
         SDL_RenderFillRect(m_renderer.get(), &progressRect);
+        return *this;
+    }
+    paint& paint::refreshPanelIcons(std::array<std::uint64_t, 5> iconIds)
+    {
+        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
+        auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
+
+        for (auto&& id : iconIds | std::views::reverse)
+        {
+            auto path = std::format("icon/{}.webp", id);
+            auto texture = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), path.c_str()));
+            iconRect.y -= iconRect.h + (float)margin.x;
+            SDL_RenderTexture(m_renderer.get(), texture.get(), nullptr, &iconRect);
+            iconRect.y -= (float)margin.x;
+        }
         SDL_SetRenderViewport(m_renderer.get(), nullptr);
+        
+        return *this;
+    }
+
+    paint& paint::save()
+    {
+        SDL_SetRenderViewport(m_renderer.get(), nullptr);
+        m_panel = nullptr;
+        m_panel.reset(SDL_RenderReadPixels(m_renderer.get(), nullptr));
+        IMG_SavePNG(m_panel.get(), "test.png");
+        return *this;
+    }
+
+    paint& paint::show()
+    {
         SDL_RenderPresent(m_renderer.get());
         SDL_Delay(5000);
         return *this;
     }
-    paint& paint::refreshPanelIcons(const char* data)
-    {
-        return *this;
-    }
+    
 }
