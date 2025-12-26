@@ -21,8 +21,9 @@ namespace yobot {
         static paint& getInstance();
     public:
         paint& preparePanel();
-        paint& refreshPanelIcons(std::array<std::uint64_t,5> iconIds);
+        paint& refreshPanelIcons(std::array<std::uint64_t, 5> iconIds);
         paint& save();
+        paint& refreshBackground();
         paint& show();
     private:
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> m_window;

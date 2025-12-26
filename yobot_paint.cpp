@@ -30,7 +30,7 @@ namespace yobot {
     }
 
     constexpr auto windowSize = SDL_Point{ 480,640 };
-    constexpr auto white = SDL_Color{ 255,255,255,224 };
+    constexpr auto white = SDL_Color{ 255,255,255,128 };
     constexpr auto halfTransparent = SDL_Color{ 0,0,0,128 };
     constexpr auto transparent = SDL_Color{ 0,0,0,0 };
     constexpr auto margin = SDL_Point{ 10,30 };
@@ -76,7 +76,10 @@ namespace yobot {
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture->w / 8 * 5),(float)(texture->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
         auto font = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 12));
+        TTF_SetFontHinting(font.get(), TTF_HINTING_LIGHT_SUBPIXEL);
+        TTF_SetFontSDF(font.get(), true);
         auto lapFont = unique_sdl_font(TTF_CopyFont(font.get()));
+        TTF_SetFontStyle(lapFont.get(), TTF_STYLE_BOLD);
         TTF_SetFontSize(lapFont.get(), 18);
         auto lapText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), lapFont.get(), "周目", 6));
         auto titleFont = unique_sdl_font(TTF_CopyFont(font.get()));
@@ -131,6 +134,16 @@ namespace yobot {
         m_panel = nullptr;
         m_panel.reset(SDL_RenderReadPixels(m_renderer.get(), nullptr));
         IMG_SavePNG(m_panel.get(), "test.png");
+        return *this;
+    }
+
+    paint& paint::refreshBackground()
+    {
+        SDLSetDrawColor(m_renderer.get(), {192,0,0,255});
+        SDL_RenderClear(m_renderer.get());
+        auto texture = unique_sdl_texture(SDL_CreateTextureFromSurface(m_renderer.get(), m_panel.get()));
+        SDL_SetRenderDrawBlendMode(m_renderer.get(), SDL_BLENDMODE_BLEND);
+        SDL_RenderTexture(m_renderer.get(), texture.get(), nullptr, nullptr);
         return *this;
     }
 
