@@ -10,8 +10,8 @@ namespace yobot {
     constexpr inline auto SDLIOStreamDeleter = [](SDL_IOStream* stream) { SDL_CloseIO(stream); };
     using unique_sdl_iostream = std::unique_ptr<SDL_IOStream, decltype(SDLIOStreamDeleter)>;
 
-    constexpr inline auto SDLTextureDeleter = [](SDL_Texture* texture) { SDL_DestroyTexture(texture); };
-    using unique_sdl_texture = std::unique_ptr<SDL_Texture, decltype(SDLTextureDeleter)>;
+    constexpr inline auto SDLSurfaceDeleter = [](SDL_Surface* surface) { puts(std::format("0x{:X}", (long long)surface).c_str()); SDL_DestroySurface(surface); };
+    using unique_sdl_surface = std::unique_ptr<SDL_Surface, decltype(SDLSurfaceDeleter)>;
 
     constexpr inline auto SDLTextDeleter = [](TTF_Text* text) { TTF_DestroyText(text); };
     using unique_sdl_text = std::unique_ptr<TTF_Text, decltype(SDLTextDeleter)>;
@@ -33,6 +33,7 @@ namespace yobot {
     constexpr auto white = SDL_Color{ 255,255,255,128 };
     constexpr auto halfTransparent = SDL_Color{ 0,0,0,128 };
     constexpr auto transparent = SDL_Color{ 0,0,0,0 };
+    constexpr auto black = SDL_Color{ 0,0,0,255 };
     constexpr auto margin = SDL_Point{ 10,30 };
     constexpr auto clipRect = SDL_Rect{ margin.x, margin.y, windowSize.x - margin.x * 2, windowSize.y - margin.y * 2 };
     constexpr auto panelRect = SDL_FRect{ 0.0f,0.0f,(float)clipRect.w,(float)clipRect.h };
@@ -131,19 +132,18 @@ namespace yobot {
     paint& paint::save()
     {
         SDL_SetRenderViewport(m_renderer.get(), nullptr);
-        m_panel = nullptr;
-        m_panel.reset(SDL_RenderReadPixels(m_renderer.get(), nullptr));
-        IMG_SavePNG(m_panel.get(), "test.png");
+        auto surface = unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
+        m_panel.reset(SDL_CreateTextureFromSurface(m_renderer.get(), surface.get()));
+        IMG_SavePNG(surface.get(), "test.png");
         return *this;
     }
 
-    paint& paint::refreshBackground()
+    paint& paint::refreshBackground(SDL_Color color)
     {
-        SDLSetDrawColor(m_renderer.get(), {192,0,0,255});
+        SDLSetDrawColor(m_renderer.get(), color);
         SDL_RenderClear(m_renderer.get());
-        auto texture = unique_sdl_texture(SDL_CreateTextureFromSurface(m_renderer.get(), m_panel.get()));
         SDL_SetRenderDrawBlendMode(m_renderer.get(), SDL_BLENDMODE_BLEND);
-        SDL_RenderTexture(m_renderer.get(), texture.get(), nullptr, nullptr);
+        SDL_RenderTexture(m_renderer.get(), m_panel.get(), nullptr, nullptr);
         return *this;
     }
 

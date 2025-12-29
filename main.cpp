@@ -6,7 +6,7 @@ int main(int argc, char const *argv[])
         .preparePanel()
         .refreshPanelIcons({ 312501,316600,300701,316102,302600 })
         .save()
-        .refreshBackground()
+        .refreshBackground({ 192,0,0,255 })
         .save()
         .show();
     return 0;

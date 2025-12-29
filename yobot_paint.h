@@ -7,8 +7,8 @@
 
 namespace yobot {
 
-    constexpr inline auto SDLSurfaceDeleter = [](SDL_Surface* surface) { SDL_DestroySurface(surface); };
-    using unique_sdl_surface = std::unique_ptr<SDL_Surface, decltype(SDLSurfaceDeleter)> ;
+    constexpr inline auto SDLTextureDeleter = [](SDL_Texture* texture) { SDL_DestroyTexture(texture); };
+    using unique_sdl_texture = std::unique_ptr<SDL_Texture, decltype(SDLTextureDeleter)>;
 
     class paint
     {
@@ -23,13 +23,13 @@ namespace yobot {
         paint& preparePanel();
         paint& refreshPanelIcons(std::array<std::uint64_t, 5> iconIds);
         paint& save();
-        paint& refreshBackground();
+        paint& refreshBackground(SDL_Color color);
         paint& show();
     private:
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> m_window;
         std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> m_renderer;
         std::unique_ptr<TTF_TextEngine, decltype(&TTF_DestroyRendererTextEngine)> m_textEngine;
-        unique_sdl_surface m_panel;
+        unique_sdl_texture m_panel;
     };
 }
 
