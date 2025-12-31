@@ -10,7 +10,7 @@ namespace yobot {
     constexpr inline auto SDLIOStreamDeleter = [](SDL_IOStream* stream) { SDL_CloseIO(stream); };
     using unique_sdl_iostream = std::unique_ptr<SDL_IOStream, decltype(SDLIOStreamDeleter)>;
 
-    constexpr inline auto SDLSurfaceDeleter = [](SDL_Surface* surface) { puts(std::format("0x{:X}", (long long)surface).c_str()); SDL_DestroySurface(surface); };
+    constexpr inline auto SDLSurfaceDeleter = [](SDL_Surface* surface) { SDL_DestroySurface(surface); };
     using unique_sdl_surface = std::unique_ptr<SDL_Surface, decltype(SDLSurfaceDeleter)>;
 
     constexpr inline auto SDLTextDeleter = [](TTF_Text* text) { TTF_DestroyText(text); };
@@ -113,18 +113,18 @@ namespace yobot {
     }
     paint& paint::refreshPanelIcons(std::array<std::uint64_t, 5> iconIds)
     {
+        SDL_SetRenderViewport(m_renderer.get(), &clipRect);
         auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
 
         for (auto&& id : iconIds | std::views::reverse)
         {
-            auto path = std::format("icon/{}.webp", id);
+            auto path = std::format("icon/{:06}.webp", id);
             auto texture = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), path.c_str()));
             iconRect.y -= iconRect.h + (float)margin.x;
             SDL_RenderTexture(m_renderer.get(), texture.get(), nullptr, &iconRect);
             iconRect.y -= (float)margin.x;
         }
-        SDL_SetRenderViewport(m_renderer.get(), nullptr);
         
         return *this;
     }
@@ -140,10 +140,53 @@ namespace yobot {
 
     paint& paint::refreshBackground(SDL_Color color)
     {
+        SDL_SetRenderViewport(m_renderer.get(), nullptr);
         SDLSetDrawColor(m_renderer.get(), color);
         SDL_RenderClear(m_renderer.get());
         SDL_SetRenderDrawBlendMode(m_renderer.get(), SDL_BLENDMODE_BLEND);
         SDL_RenderTexture(m_renderer.get(), m_panel.get(), nullptr, nullptr);
+        SDL_SetRenderDrawBlendMode(m_renderer.get(), SDL_BLENDMODE_NONE);
+        return *this;
+    }
+
+    paint& paint::refreshTotalProgress(const std::array<Progress, 2>& progresses)
+    {
+        SDL_SetRenderViewport(m_renderer.get(), &clipRect);
+        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
+        auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
+        auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
+        auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 2 };
+        auto progressRect = SDL_FRect{ HPRect.x, phaseRect.y - margin.x / 5 * 2, HPRect.w, phaseRect.h / 2 };
+        SDL_RenderFillRect(m_renderer.get(), &progressRect);
+        progressRect.y += margin.x / 5 * 4 + progressRect.h;
+        SDL_RenderFillRect(m_renderer.get(), &progressRect);
+        return *this;
+    }
+
+    paint& paint::refreshBossProgress(const std::array<Progress, 5>& progresses)
+    {
+        SDL_SetRenderViewport(m_renderer.get(), &clipRect);
+        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
+        auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
+        auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
+        auto lapFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 12));
+        TTF_SetFontHinting(lapFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
+        TTF_SetFontSDF(lapFont.get(), true);
+        TTF_SetFontStyle(lapFont.get(), TTF_STYLE_BOLD);
+        TTF_SetFontSize(lapFont.get(), 18);
+        for (int i = 5; i > 0; i--)
+        {
+            SDLSetDrawColor(m_renderer.get(), halfTransparent);
+            iconRect.y -= (float)(iconRect.h + margin.x);
+            HPRect.y = iconRect.y + iconRect.h / 5 * 2;
+            //SDL_RenderFillRect(m_renderer.get(), &HPRect);
+            iconRect.y -= (float)margin.x;
+            auto lapRect = SDL_FRect{ HPRect.x, iconRect.y + margin.x + 4 , 18 * 4,22 };
+            SDLSetDrawColor(m_renderer.get(), transparent);
+            //SDL_RenderFillRect(m_renderer.get(), &lapRect);
+            auto lapText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), lapFont.get(), "     ", 6));
+            TTF_DrawRendererText(lapText.get(), HPRect.x + margin.x / 2, iconRect.y + margin.x);
+        }
         return *this;
     }
 

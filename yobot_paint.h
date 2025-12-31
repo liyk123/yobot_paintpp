@@ -10,6 +10,8 @@ namespace yobot {
     constexpr inline auto SDLTextureDeleter = [](SDL_Texture* texture) { SDL_DestroyTexture(texture); };
     using unique_sdl_texture = std::unique_ptr<SDL_Texture, decltype(SDLTextureDeleter)>;
 
+    using Progress = std::pair<std::uint64_t, std::uint64_t>;
+
     class paint
     {
     private:
@@ -24,6 +26,8 @@ namespace yobot {
         paint& refreshPanelIcons(std::array<std::uint64_t, 5> iconIds);
         paint& save();
         paint& refreshBackground(SDL_Color color);
+        paint& refreshTotalProgress(const std::array<Progress, 2>& progresses);
+        paint& refreshBossProgress(const std::array<Progress, 5>& progresses);
         paint& show();
     private:
         std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> m_window;
