@@ -4,27 +4,32 @@
 #include <SDL3_image/SDL_image.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <ranges>
+#include <future>
 
 namespace yobot {
 
-    constexpr inline auto SDLIOStreamDeleter = [](SDL_IOStream* stream) { SDL_CloseIO(stream); };
-    using unique_sdl_iostream = std::unique_ptr<SDL_IOStream, decltype(SDLIOStreamDeleter)>;
+    enum class PaintEvent
+    {
+        MOUSE_BUTTON_UP = SDL_EVENT_MOUSE_BUTTON_UP,
+        QUIT = SDL_EVENT_QUIT,
+        DRAW_PROCESS = SDL_EVENT_USER + 1,
+    };
 
-    constexpr inline auto SDLSurfaceDeleter = [](SDL_Surface* surface) { SDL_DestroySurface(surface); };
-    using unique_sdl_surface = std::unique_ptr<SDL_Surface, decltype(SDLSurfaceDeleter)>;
+    using SDLIOStreamDeleter = decltype([](SDL_IOStream* stream) noexcept { SDL_CloseIO(stream); });
+    using unique_sdl_iostream = std::unique_ptr<SDL_IOStream, SDLIOStreamDeleter>;
 
-    constexpr inline auto SDLTextDeleter = [](TTF_Text* text) { TTF_DestroyText(text); };
-    using unique_sdl_text = std::unique_ptr<TTF_Text, decltype(SDLTextDeleter)>;
+    using SDLTextDeleter = decltype([](TTF_Text* text) noexcept { TTF_DestroyText(text); });
+    using unique_sdl_text = std::unique_ptr<TTF_Text, SDLTextDeleter>;
 
-    constexpr inline auto SDLFontDeleter = [](TTF_Font* font) { TTF_CloseFont(font); };
-    using unique_sdl_font = std::unique_ptr<TTF_Font, decltype(SDLFontDeleter)>;
+    using SDLFontDeleter = decltype([](TTF_Font* font) noexcept { TTF_CloseFont(font); });
+    using unique_sdl_font = std::unique_ptr<TTF_Font, SDLFontDeleter>;
 
-    inline bool SDLSetDrawColor(SDL_Renderer* renderer, const SDL_Color& color)
+    inline bool SDLSetDrawColor(SDL_Renderer* renderer, const SDL_Color& color) noexcept
     {
         return SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     }
 
-    inline bool SDLSetTextColor(TTF_Text* text, const SDL_Color& color)
+    inline bool SDLSetTextColor(TTF_Text* text, const SDL_Color& color) noexcept
     {
         return TTF_SetTextColor(text, color.r, color.g, color.b, color.a);
     }
@@ -39,18 +44,19 @@ namespace yobot {
     constexpr auto panelRect = SDL_FRect{ 0.0f,0.0f,(float)clipRect.w,(float)clipRect.h };
 
     paint::paint() 
-        : m_window(nullptr, &SDL_DestroyWindow)
-        , m_renderer(nullptr, &SDL_DestroyRenderer)
-        , m_textEngine(nullptr, &TTF_DestroyRendererTextEngine)
+        : m_window(nullptr)
+        , m_renderer(nullptr)
+        , m_textEngine(nullptr)
         , m_panel(nullptr)
     {
         auto sdlInitRet = SDL_Init(SDL_INIT_VIDEO);
         auto ttfInitRet = TTF_Init();
-        m_window.reset(SDL_CreateWindow(PROJECT_NAME, windowSize.x, windowSize.y, /*SDL_WINDOW_HIDDEN |*/ SDL_WINDOW_TRANSPARENT | SDL_WINDOW_ALWAYS_ON_TOP));
+        m_window.reset(SDL_CreateWindow(PROJECT_NAME, windowSize.x, windowSize.y, /*SDL_WINDOW_HIDDEN |*/ SDL_WINDOW_TRANSPARENT));
         m_renderer.reset(SDL_CreateRenderer(m_window.get(), nullptr));
         m_textEngine.reset(TTF_CreateRendererTextEngine(m_renderer.get()));
         SPDLOG_INFO("SDL_Init {} TTF_Init {} window:{} renderer:{}", sdlInitRet, ttfInitRet, SDL_GetWindowID(m_window.get()), SDL_GetRendererName(m_renderer.get()));
     }
+
     paint::~paint()
     {
         m_panel = nullptr;
@@ -61,11 +67,25 @@ namespace yobot {
         SDL_Quit();
         SPDLOG_INFO("SDL_Quit");
     }
+
     paint& paint::getInstance()
     {
         static paint instance{};
         return instance;
     }
+
+    std::string paint::savePNGBuffer(unique_sdl_surface&& surface)
+    {
+        auto ostream = SDL_IOFromDynamicMem();
+        IMG_SavePNG_IO(surface.get(), ostream, false);
+        auto buff = std::string(SDL_GetIOSize(ostream), 0);
+        SDL_SeekIO(ostream, 0, SDL_IO_SEEK_SET);
+        SDL_ReadIO(ostream, buff.data(), buff.size());
+        SDL_CloseIO(ostream);
+        SPDLOG_INFO("SAVE {} bytes", buff.size());
+        return buff;
+    }
+
     paint& paint::preparePanel()
     {
         SDLSetDrawColor(m_renderer.get(), halfTransparent);
@@ -73,8 +93,8 @@ namespace yobot {
         SDLSetDrawColor(m_renderer.get(), white);
         SDL_SetRenderViewport(m_renderer.get(), &clipRect);
         SDL_RenderFillRect(m_renderer.get(), nullptr);
-        auto texture = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
-        auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture->w / 8 * 5),(float)(texture->h / 8 * 5) };
+        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
+        auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
         auto font = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 12));
         TTF_SetFontHinting(font.get(), TTF_HINTING_LIGHT_SUBPIXEL);
@@ -92,7 +112,7 @@ namespace yobot {
             iconRect.y -= (float)(iconRect.h + margin.x * 2);
             SDL_RenderLine(m_renderer.get(), panelRect.x, iconRect.y, panelRect.x + panelRect.w, iconRect.y);
             iconRect.y += (float)margin.x;
-            SDL_RenderTexture(m_renderer.get(), texture.get(), nullptr, &iconRect);
+            SDL_RenderTexture(m_renderer.get(), texture0.get(), nullptr, &iconRect);
             HPRect.y = iconRect.y + iconRect.h / 5 * 2;
             SDL_RenderFillRect(m_renderer.get(), &HPRect);
             iconRect.y -= (float)margin.x;
@@ -111,8 +131,14 @@ namespace yobot {
         SDL_RenderFillRect(m_renderer.get(), &progressRect);
         return *this;
     }
+
     paint& paint::refreshPanelIcons(std::array<std::uint64_t, 5> iconIds)
     {
+        SDLSetDrawColor(m_renderer.get(), transparent);
+        SDL_RenderClear(m_renderer.get());
+        SDL_SetRenderViewport(m_renderer.get(), nullptr);
+        SDL_SetTextureBlendMode(m_panel.get(), SDL_BLENDMODE_NONE);
+        SDL_RenderTexture(m_renderer.get(), m_panel.get(), nullptr, nullptr);
         SDL_SetRenderViewport(m_renderer.get(), &clipRect);
         auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
@@ -122,6 +148,7 @@ namespace yobot {
             auto path = std::format("icon/{:06}.webp", id);
             auto texture = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), path.c_str()));
             iconRect.y -= iconRect.h + (float)margin.x;
+            SDL_SetTextureBlendMode(texture.get(), SDL_BLENDMODE_NONE);
             SDL_RenderTexture(m_renderer.get(), texture.get(), nullptr, &iconRect);
             iconRect.y -= (float)margin.x;
         }
@@ -134,7 +161,7 @@ namespace yobot {
         SDL_SetRenderViewport(m_renderer.get(), nullptr);
         auto surface = unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
         m_panel.reset(SDL_CreateTextureFromSurface(m_renderer.get(), surface.get()));
-        IMG_SavePNG(surface.get(), "test.png");
+        //std::ofstream("test.png", std::ios::binary) << savePNGBuffer(std::move(surface));
         return *this;
     }
 
@@ -143,9 +170,7 @@ namespace yobot {
         SDL_SetRenderViewport(m_renderer.get(), nullptr);
         SDLSetDrawColor(m_renderer.get(), color);
         SDL_RenderClear(m_renderer.get());
-        SDL_SetRenderDrawBlendMode(m_renderer.get(), SDL_BLENDMODE_BLEND);
         SDL_RenderTexture(m_renderer.get(), m_panel.get(), nullptr, nullptr);
-        SDL_SetRenderDrawBlendMode(m_renderer.get(), SDL_BLENDMODE_NONE);
         return *this;
     }
 
@@ -193,8 +218,49 @@ namespace yobot {
     paint& paint::show()
     {
         SDL_RenderPresent(m_renderer.get());
-        SDL_Delay(5000);
         return *this;
+    }
+
+    void paint::mainLoop()
+    {
+        //SDL_Color colors[] = { {192,0,0,255},{0,192,0,255},{0,0,192,255} };
+        //std::uint8_t i = 0;
+        SDL_Event e{};
+        while (SDL_WaitEvent(&e))
+        {
+            switch ((PaintEvent)e.type)
+            {
+                case PaintEvent::DRAW_PROCESS:
+                {
+                    std::invoke(*(static_cast<std::function<void()>*>(e.user.data1)));
+                    auto surface = unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
+                    static_cast<std::promise<unique_sdl_surface>*>(e.user.data2)->set_value(std::move(surface));
+                    break;
+                }
+                case PaintEvent::MOUSE_BUTTON_UP:
+                {
+                    //yobot::paint::getInstance().refreshBackground(colors[i = ++i % 3]).show();
+                    break;
+                }
+                case PaintEvent::QUIT:
+                    return;
+                default:
+                    break;
+            }
+        }
+        SPDLOG_ERROR("{}", SDL_GetError());
+    }
+
+    bool paint::postDrawProcess(std::function<void()>& process, std::promise<unique_sdl_surface>& promise)
+    {
+        SDL_Event e{
+            .user{
+                .type = (std::uint32_t)PaintEvent::DRAW_PROCESS,
+                .data1 = &process,
+                .data2 = &promise
+            },
+        };
+        return SDL_PushEvent(&e);
     }
     
 }
