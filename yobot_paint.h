@@ -10,7 +10,7 @@
 
 namespace yobot {
 
-    template <typename T, void (*Destructor)(T*)>
+    template <typename T, auto (*Destructor)(T*)>
     struct GenericDeleter
     {
         void operator()(T* ptr) const noexcept
@@ -22,12 +22,12 @@ namespace yobot {
     using SDLSurfaceDeleter = GenericDeleter<SDL_Surface, SDL_DestroySurface>;
     using unique_sdl_surface = std::unique_ptr<SDL_Surface, SDLSurfaceDeleter>;
 
-    using SDLTextureDeleter = decltype([](SDL_Texture* texture) noexcept { SDL_DestroyTexture(texture); });
+    using SDLTextureDeleter = GenericDeleter<SDL_Texture, SDL_DestroyTexture>;
     using unique_sdl_texture = std::unique_ptr<SDL_Texture, SDLTextureDeleter>;
 
-    using SDLWindowDeleter = decltype([](SDL_Window* window) noexcept { SDL_DestroyWindow(window); });
-    using SDLRendererDeleter = decltype([](SDL_Renderer* renderer) noexcept { SDL_DestroyRenderer(renderer); });
-    using SDLRendererTextEngineDeleter = decltype([](TTF_TextEngine* textEngine) noexcept { TTF_DestroyRendererTextEngine(textEngine); });
+    using SDLWindowDeleter = GenericDeleter<SDL_Window, SDL_DestroyWindow>;
+    using SDLRendererDeleter = GenericDeleter<SDL_Renderer, SDL_DestroyRenderer>;
+    using SDLRendererTextEngineDeleter = GenericDeleter<TTF_TextEngine, TTF_DestroyRendererTextEngine>;
 
     using Progress = std::pair<std::uint64_t, std::uint64_t>;
 
@@ -48,10 +48,11 @@ namespace yobot {
         paint& save();
         paint& refreshBackground(SDL_Color color);
         paint& refreshTotalProgress(const std::array<Progress, 2>& progresses);
-        paint& refreshBossProgress(const std::array<Progress, 5>& progresses);
+        paint& refreshBossProgress(const std::array<std::uint64_t, 5>& laps, const std::array<Progress, 5>& progresses);
         paint& show();
         void mainLoop();
         bool postDrawProcess(std::function<void()>& process, std::promise<unique_sdl_surface>& promise);
+        bool postQuit();
     private:
         std::unique_ptr<SDL_Window, SDLWindowDeleter> m_window;
         std::unique_ptr<SDL_Renderer, SDLRendererDeleter> m_renderer;

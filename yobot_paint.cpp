@@ -15,10 +15,10 @@ namespace yobot {
         DRAW_PROCESS = SDL_EVENT_USER + 1,
     };
 
-    using SDLIOStreamDeleter = decltype([](SDL_IOStream* stream) noexcept { SDL_CloseIO(stream); });
+    using SDLIOStreamDeleter = GenericDeleter<SDL_IOStream, SDL_CloseIO>;
     using unique_sdl_iostream = std::unique_ptr<SDL_IOStream, SDLIOStreamDeleter>;
 
-    using SDLTextDeleter = decltype([](TTF_Text* text) noexcept { TTF_DestroyText(text); });
+    using SDLTextDeleter = GenericDeleter<TTF_Text, TTF_DestroyText>;
     using unique_sdl_text = std::unique_ptr<TTF_Text, SDLTextDeleter>;
 
     using SDLFontDeleter = decltype([](TTF_Font* font) noexcept { TTF_CloseFont(font); });
@@ -55,6 +55,11 @@ namespace yobot {
         m_renderer.reset(SDL_CreateRenderer(m_window.get(), nullptr));
         m_textEngine.reset(TTF_CreateRendererTextEngine(m_renderer.get()));
         SPDLOG_INFO("SDL_Init {} TTF_Init {} window:{} renderer:{}", sdlInitRet, ttfInitRet, SDL_GetWindowID(m_window.get()), SDL_GetRendererName(m_renderer.get()));
+        int driverNum = SDL_GetNumRenderDrivers();
+        for (int i = 0; i < driverNum; i++)
+        {
+            SPDLOG_INFO(SDL_GetRenderDriver(i));
+        }
     }
 
     paint::~paint()
@@ -97,14 +102,14 @@ namespace yobot {
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
         auto font = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 12));
-        TTF_SetFontHinting(font.get(), TTF_HINTING_LIGHT_SUBPIXEL);
-        TTF_SetFontSDF(font.get(), true);
         auto lapFont = unique_sdl_font(TTF_CopyFont(font.get()));
         TTF_SetFontStyle(lapFont.get(), TTF_STYLE_BOLD);
+        TTF_SetFontHinting(lapFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
         TTF_SetFontSize(lapFont.get(), 18);
         auto lapText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), lapFont.get(), "周目", 6));
         auto titleFont = unique_sdl_font(TTF_CopyFont(font.get()));
         TTF_SetFontSize(titleFont.get(), 24);
+        TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
         auto phaseText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), titleFont.get(), "阶段", 6));
         for (int i = 5; i > 0; i--)
         {
@@ -148,7 +153,6 @@ namespace yobot {
             auto path = std::format("icon/{:06}.webp", id);
             auto texture = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), path.c_str()));
             iconRect.y -= iconRect.h + (float)margin.x;
-            SDL_SetTextureBlendMode(texture.get(), SDL_BLENDMODE_NONE);
             SDL_RenderTexture(m_renderer.get(), texture.get(), nullptr, &iconRect);
             iconRect.y -= (float)margin.x;
         }
@@ -161,7 +165,6 @@ namespace yobot {
         SDL_SetRenderViewport(m_renderer.get(), nullptr);
         auto surface = unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
         m_panel.reset(SDL_CreateTextureFromSurface(m_renderer.get(), surface.get()));
-        //std::ofstream("test.png", std::ios::binary) << savePNGBuffer(std::move(surface));
         return *this;
     }
 
@@ -188,28 +191,41 @@ namespace yobot {
         return *this;
     }
 
-    paint& paint::refreshBossProgress(const std::array<Progress, 5>& progresses)
+    paint& paint::refreshBossProgress(const std::array<std::uint64_t, 5>& laps, const std::array<Progress, 5>& progresses)
     {
         SDL_SetRenderViewport(m_renderer.get(), &clipRect);
         auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
-        auto lapFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 12));
-        TTF_SetFontHinting(lapFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
-        TTF_SetFontSDF(lapFont.get(), true);
+        auto lapFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 18));
         TTF_SetFontStyle(lapFont.get(), TTF_STYLE_BOLD);
-        TTF_SetFontSize(lapFont.get(), 18);
-        for (int i = 5; i > 0; i--)
+        TTF_SetFontHinting(lapFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
+        auto HPFont = unique_sdl_font(TTF_CopyFont(lapFont.get()));
+        TTF_SetFontSize(HPFont.get(), 12);
+        auto HPTextMiddleX = HPRect.x + HPRect.w / 2;
+        auto HPText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), HPFont.get(), nullptr, 0));
+        auto lapText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), lapFont.get(), nullptr, 0));
+        for (int i = 4; i >= 0; i--)
         {
-            SDLSetDrawColor(m_renderer.get(), halfTransparent);
             iconRect.y -= (float)(iconRect.h + margin.x);
             HPRect.y = iconRect.y + iconRect.h / 5 * 2;
-            //SDL_RenderFillRect(m_renderer.get(), &HPRect);
+            SDLSetDrawColor(m_renderer.get(), halfTransparent);
+            SDL_RenderFillRect(m_renderer.get(), &HPRect);
+            auto HPProgress = HPRect;
+            HPProgress.w = HPProgress.w / progresses[i].second * progresses[i].first;
+            SDLSetDrawColor(m_renderer.get(), {192,0,0,255});
+            SDL_RenderFillRect(m_renderer.get(), &HPProgress);
+            auto HPStr = std::format("{}/{}", progresses[i].first, progresses[i].second);
+            TTF_SetTextString(HPText.get(), HPStr.c_str(), HPStr.length());
+            int w, h;
+            TTF_GetTextSize(HPText.get(), &w, &h);
+            TTF_DrawRendererText(HPText.get(), HPTextMiddleX - w / 2.0f, HPRect.y);
             iconRect.y -= (float)margin.x;
             auto lapRect = SDL_FRect{ HPRect.x, iconRect.y + margin.x + 4 , 18 * 4,22 };
             SDLSetDrawColor(m_renderer.get(), transparent);
             //SDL_RenderFillRect(m_renderer.get(), &lapRect);
-            auto lapText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), lapFont.get(), "     ", 6));
+            auto lapStr = std::format("周目{}", laps[i]);
+            TTF_SetTextString(lapText.get(), lapStr.c_str(), lapStr.length());
             TTF_DrawRendererText(lapText.get(), HPRect.x + margin.x / 2, iconRect.y + margin.x);
         }
         return *this;
@@ -223,8 +239,6 @@ namespace yobot {
 
     void paint::mainLoop()
     {
-        //SDL_Color colors[] = { {192,0,0,255},{0,192,0,255},{0,0,192,255} };
-        //std::uint8_t i = 0;
         SDL_Event e{};
         while (SDL_WaitEvent(&e))
         {
@@ -233,13 +247,13 @@ namespace yobot {
                 case PaintEvent::DRAW_PROCESS:
                 {
                     std::invoke(*(static_cast<std::function<void()>*>(e.user.data1)));
+                    SDL_SetRenderViewport(m_renderer.get(), nullptr);
                     auto surface = unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
                     static_cast<std::promise<unique_sdl_surface>*>(e.user.data2)->set_value(std::move(surface));
                     break;
                 }
                 case PaintEvent::MOUSE_BUTTON_UP:
                 {
-                    //yobot::paint::getInstance().refreshBackground(colors[i = ++i % 3]).show();
                     break;
                 }
                 case PaintEvent::QUIT:
@@ -260,6 +274,12 @@ namespace yobot {
                 .data2 = &promise
             },
         };
+        return SDL_PushEvent(&e);
+    }
+
+    bool paint::postQuit()
+    {
+        SDL_Event e{ SDL_EVENT_QUIT };
         return SDL_PushEvent(&e);
     }
     
