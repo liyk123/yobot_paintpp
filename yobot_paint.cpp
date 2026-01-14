@@ -45,6 +45,7 @@ namespace yobot {
 
     paint::paint() 
         : m_window(nullptr)
+        , m_windowSurafce(nullptr)
         , m_renderer(nullptr)
         , m_textEngine(nullptr)
         , m_panel(nullptr)
@@ -52,14 +53,18 @@ namespace yobot {
         auto sdlInitRet = SDL_Init(SDL_INIT_VIDEO);
         auto ttfInitRet = TTF_Init();
         m_window.reset(SDL_CreateWindow(PROJECT_NAME, windowSize.x, windowSize.y, /*SDL_WINDOW_HIDDEN |*/ SDL_WINDOW_TRANSPARENT));
-        m_renderer.reset(SDL_CreateRenderer(m_window.get(), nullptr));
+        if (m_window)
+        {
+            m_renderer.reset(SDL_CreateRenderer(m_window.get(), nullptr));
+        }
+        if (!m_renderer || std::string_view(SDL_GetRendererName(m_renderer.get())) == std::string_view("software"))
+        {
+            m_window = nullptr;
+            m_windowSurafce.reset(SDL_CreateSurface(windowSize.x, windowSize.y, SDL_PIXELFORMAT_ARGB8888));
+            m_renderer.reset(SDL_CreateSoftwareRenderer(m_windowSurafce.get()));
+        }
         m_textEngine.reset(TTF_CreateRendererTextEngine(m_renderer.get()));
         SPDLOG_INFO("SDL_Init {} TTF_Init {} window:{} renderer:{}", sdlInitRet, ttfInitRet, SDL_GetWindowID(m_window.get()), SDL_GetRendererName(m_renderer.get()));
-        int driverNum = SDL_GetNumRenderDrivers();
-        for (int i = 0; i < driverNum; i++)
-        {
-            SPDLOG_INFO(SDL_GetRenderDriver(i));
-        }
     }
 
     paint::~paint()
@@ -67,6 +72,7 @@ namespace yobot {
         m_panel = nullptr;
         m_textEngine = nullptr;
         m_renderer = nullptr;
+        m_windowSurafce = nullptr;
         m_window = nullptr;
         TTF_Quit();
         SDL_Quit();
@@ -250,6 +256,7 @@ namespace yobot {
                     SDL_SetRenderViewport(m_renderer.get(), nullptr);
                     auto surface = unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
                     static_cast<std::promise<unique_sdl_surface>*>(e.user.data2)->set_value(std::move(surface));
+                    SDL_RenderPresent(m_renderer.get());
                     break;
                 }
                 case PaintEvent::MOUSE_BUTTON_UP:

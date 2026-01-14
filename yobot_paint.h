@@ -55,6 +55,7 @@ namespace yobot {
         bool postQuit();
     private:
         std::unique_ptr<SDL_Window, SDLWindowDeleter> m_window;
+        unique_sdl_surface m_windowSurafce;
         std::unique_ptr<SDL_Renderer, SDLRendererDeleter> m_renderer;
         std::unique_ptr<TTF_TextEngine, SDLRendererTextEngineDeleter> m_textEngine;
         unique_sdl_texture m_panel;

@@ -29,7 +29,6 @@ int main(int argc, char const *argv[])
                         .refreshBossProgress({ 1,1,1,1,1 }, { {{1e9,1e9},{5e8,1e9},{1e9,1e9},{1e9,1e9},{1e9,1e9}} })
                         ;
                     SPDLOG_INFO("End");
-                    yobot::paint::getInstance().show();
                 };
                 yobot::paint::getInstance().postDrawProcess(drawProcess, drawPromise);
                 resp.body = yobot::paint::savePNGBuffer(drawPromise.get_future().get());
