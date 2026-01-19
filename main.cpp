@@ -2,13 +2,18 @@
 #include <httplib.h>
 #include <spdlog/spdlog.h>
 
+constexpr auto logPattern = "%m-%d %H:%M:%S.%e [%^%l%$] [thread:%t] [%s:%#] %v";
+
+inline void InitEnv()
+{
+    spdlog::default_logger()->set_pattern(logPattern);
+}
+
 int main(int argc, char const *argv[])
 {
+    InitEnv();
     yobot::paint::getInstance()
-        .preparePanel()
-        .save()
-        .refreshPanelIcons({ 312501,316600,300701,316102,302600 })
-        .save()
+        .preparePanel({ 312501,316600,300701,316102,302600 })
         .show();
     httplib::Server server;
     std::jthread httpServer([&]() {

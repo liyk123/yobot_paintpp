@@ -55,7 +55,7 @@ namespace yobot {
         m_window.reset(SDL_CreateWindow(PROJECT_NAME, windowSize.x, windowSize.y, /*SDL_WINDOW_HIDDEN |*/ SDL_WINDOW_TRANSPARENT));
         if (m_window)
         {
-            m_renderer.reset(SDL_CreateRenderer(m_window.get(), nullptr));
+            m_renderer.reset(SDL_CreateRenderer(m_window.get(), "software"));
         }
         if (!m_renderer || std::string_view(SDL_GetRendererName(m_renderer.get())) == std::string_view("software"))
         {
@@ -89,88 +89,73 @@ namespace yobot {
     {
         auto ostream = SDL_IOFromDynamicMem();
         IMG_SavePNG_IO(surface.get(), ostream, false);
-        auto buff = std::string(SDL_GetIOSize(ostream), 0);
-        SDL_SeekIO(ostream, 0, SDL_IO_SEEK_SET);
-        SDL_ReadIO(ostream, buff.data(), buff.size());
+        auto props = SDL_GetIOProperties(ostream);
+        auto internal_ptr = (char*)SDL_GetPointerProperty(props, SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, nullptr);
+        auto buff = std::string(internal_ptr, SDL_GetIOSize(ostream));
         SDL_CloseIO(ostream);
         SPDLOG_INFO("SAVE {} bytes", buff.size());
         return buff;
     }
 
-    paint& paint::preparePanel()
+    inline unique_sdl_surface paint::saveSurface()
     {
-        SDLSetDrawColor(m_renderer.get(), halfTransparent);
-        SDL_RenderClear(m_renderer.get());
-        SDLSetDrawColor(m_renderer.get(), white);
-        SDL_SetRenderViewport(m_renderer.get(), &clipRect);
-        SDL_RenderFillRect(m_renderer.get(), nullptr);
+        SDL_SetRenderViewport(m_renderer.get(), nullptr);
+        return unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
+    }
+
+    inline void ClearPanel(SDL_Renderer* renderer)
+    {
+        SDLSetDrawColor(renderer, halfTransparent);
+        SDL_RenderClear(renderer);
+        SDLSetDrawColor(renderer, white);
+        SDL_SetRenderViewport(renderer, &clipRect);
+        SDL_RenderFillRect(renderer, nullptr);
+    }
+
+    inline void RenderPanelRow(SDL_Renderer* renderer, SDL_FRect& iconRect, const uint64_t& id, SDL_FRect& HPRect)
+    {
+        SDLSetDrawColor(renderer, halfTransparent);
+        iconRect.y -= (float)(iconRect.h + margin.x * 2);
+        SDL_RenderLine(renderer, panelRect.x, iconRect.y, panelRect.x + panelRect.w, iconRect.y);
+        iconRect.y += (float)margin.x;
+        auto path = std::format("icon/{:06}.webp", id);
+        auto texture = unique_sdl_texture(IMG_LoadTexture(renderer, path.c_str()));
+        SDL_RenderTexture(renderer, texture.get(), nullptr, &iconRect);
+        HPRect.y = iconRect.y + iconRect.h / 5 * 2;
+        SDL_RenderFillRect(renderer, &HPRect);
+        iconRect.y -= (float)margin.x;
+        auto lapRect = SDL_FRect{ HPRect.x, iconRect.y + margin.x + 4 , 18 * 4,22 };
+        SDLSetDrawColor(renderer, transparent);
+        SDL_RenderFillRect(renderer, &lapRect);
+    }
+
+    inline void RenderPanelHeader(SDL_Renderer* renderer, TTF_TextEngine* textEngine, SDL_FRect& iconRect, SDL_FRect& HPRect)
+    {
+        auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 2 };
+        SDLSetDrawColor(renderer, transparent);
+        SDL_RenderFillRect(renderer, &phaseRect);
+        auto titleFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 24));
+        TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
+        auto phaseText = unique_sdl_text(TTF_CreateText(textEngine, titleFont.get(), "阶段", 6));
+        TTF_DrawRendererText(phaseText.get(), panelRect.x + margin.x * 5 / 2, panelRect.y + margin.x / 2 + 2);
+        auto progressRect = SDL_FRect{ HPRect.x, phaseRect.y - margin.x / 5 * 2, HPRect.w, phaseRect.h / 2 };
+        SDL_RenderFillRect(renderer, &progressRect);
+        progressRect.y += margin.x / 5 * 4 + progressRect.h;
+        SDL_RenderFillRect(renderer, &progressRect);
+    }
+
+    paint& paint::preparePanel(const std::array<std::uint64_t, 5>& iconIds)
+    {
+        ClearPanel(m_renderer.get());
         auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
-        auto font = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 12));
-        auto lapFont = unique_sdl_font(TTF_CopyFont(font.get()));
-        TTF_SetFontStyle(lapFont.get(), TTF_STYLE_BOLD);
-        TTF_SetFontHinting(lapFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
-        TTF_SetFontSize(lapFont.get(), 18);
-        auto lapText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), lapFont.get(), "周目", 6));
-        auto titleFont = unique_sdl_font(TTF_CopyFont(font.get()));
-        TTF_SetFontSize(titleFont.get(), 24);
-        TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
-        auto phaseText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), titleFont.get(), "阶段", 6));
-        for (int i = 5; i > 0; i--)
-        {
-            SDLSetDrawColor(m_renderer.get(), halfTransparent);
-            iconRect.y -= (float)(iconRect.h + margin.x * 2);
-            SDL_RenderLine(m_renderer.get(), panelRect.x, iconRect.y, panelRect.x + panelRect.w, iconRect.y);
-            iconRect.y += (float)margin.x;
-            SDL_RenderTexture(m_renderer.get(), texture0.get(), nullptr, &iconRect);
-            HPRect.y = iconRect.y + iconRect.h / 5 * 2;
-            SDL_RenderFillRect(m_renderer.get(), &HPRect);
-            iconRect.y -= (float)margin.x;
-            auto lapRect = SDL_FRect{ HPRect.x, iconRect.y + margin.x + 4 , 18 * 4,22 };
-            SDLSetDrawColor(m_renderer.get(), transparent);
-            SDL_RenderFillRect(m_renderer.get(), &lapRect);
-            TTF_DrawRendererText(lapText.get(), HPRect.x + margin.x / 2, iconRect.y + margin.x);
-        }
-        auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 2 };
-        SDLSetDrawColor(m_renderer.get(), transparent);
-        SDL_RenderFillRect(m_renderer.get(), &phaseRect);
-        TTF_DrawRendererText(phaseText.get(), panelRect.x + margin.x * 5 / 2, panelRect.y + margin.x / 2 + 2);
-        auto progressRect = SDL_FRect{ HPRect.x, phaseRect.y - margin.x / 5 * 2, HPRect.w, phaseRect.h / 2 };
-        SDL_RenderFillRect(m_renderer.get(), &progressRect);
-        progressRect.y += margin.x / 5 * 4 + progressRect.h;
-        SDL_RenderFillRect(m_renderer.get(), &progressRect);
-        return *this;
-    }
-
-    paint& paint::refreshPanelIcons(std::array<std::uint64_t, 5> iconIds)
-    {
-        SDLSetDrawColor(m_renderer.get(), transparent);
-        SDL_RenderClear(m_renderer.get());
-        SDL_SetRenderViewport(m_renderer.get(), nullptr);
-        SDL_SetTextureBlendMode(m_panel.get(), SDL_BLENDMODE_NONE);
-        SDL_RenderTexture(m_renderer.get(), m_panel.get(), nullptr, nullptr);
-        SDL_SetRenderViewport(m_renderer.get(), &clipRect);
-        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
-        auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
-
         for (auto&& id : iconIds | std::views::reverse)
         {
-            auto path = std::format("icon/{:06}.webp", id);
-            auto texture = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), path.c_str()));
-            iconRect.y -= iconRect.h + (float)margin.x;
-            SDL_RenderTexture(m_renderer.get(), texture.get(), nullptr, &iconRect);
-            iconRect.y -= (float)margin.x;
+            RenderPanelRow(m_renderer.get(), iconRect, id, HPRect);
         }
-        
-        return *this;
-    }
-
-    paint& paint::save()
-    {
-        SDL_SetRenderViewport(m_renderer.get(), nullptr);
-        auto surface = unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
-        m_panel.reset(SDL_CreateTextureFromSurface(m_renderer.get(), surface.get()));
+        RenderPanelHeader(m_renderer.get(), m_textEngine.get(), iconRect, HPRect);
+        m_panel.reset(SDL_CreateTextureFromSurface(m_renderer.get(), saveSurface().get()));
         return *this;
     }
 
@@ -253,9 +238,7 @@ namespace yobot {
                 case PaintEvent::DRAW_PROCESS:
                 {
                     std::invoke(*(static_cast<std::function<void()>*>(e.user.data1)));
-                    SDL_SetRenderViewport(m_renderer.get(), nullptr);
-                    auto surface = unique_sdl_surface(SDL_RenderReadPixels(m_renderer.get(), nullptr));
-                    static_cast<std::promise<unique_sdl_surface>*>(e.user.data2)->set_value(std::move(surface));
+                    static_cast<std::promise<unique_sdl_surface>*>(e.user.data2)->set_value(saveSurface());
                     SDL_RenderPresent(m_renderer.get());
                     break;
                 }
