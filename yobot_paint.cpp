@@ -55,7 +55,7 @@ namespace yobot {
         m_window.reset(SDL_CreateWindow(PROJECT_NAME, windowSize.x, windowSize.y, /*SDL_WINDOW_HIDDEN |*/ SDL_WINDOW_TRANSPARENT));
         if (m_window)
         {
-            m_renderer.reset(SDL_CreateRenderer(m_window.get(), "software"));
+            m_renderer.reset(SDL_CreateRenderer(m_window.get(), nullptr));
         }
         if (!m_renderer || std::string_view(SDL_GetRendererName(m_renderer.get())) == std::string_view("software"))
         {
@@ -129,15 +129,15 @@ namespace yobot {
         SDL_RenderFillRect(renderer, &lapRect);
     }
 
-    inline void RenderPanelHeader(SDL_Renderer* renderer, TTF_TextEngine* textEngine, SDL_FRect& iconRect, SDL_FRect& HPRect)
+    inline void RenderPanelHeader(SDL_Renderer* renderer, TTF_TextEngine* textEngine, const SDL_FRect& iconRect, const SDL_FRect& HPRect)
     {
         auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 2 };
         SDLSetDrawColor(renderer, transparent);
         SDL_RenderFillRect(renderer, &phaseRect);
-        auto titleFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 24));
-        TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
-        auto phaseText = unique_sdl_text(TTF_CreateText(textEngine, titleFont.get(), "阶段", 6));
-        TTF_DrawRendererText(phaseText.get(), panelRect.x + margin.x * 5 / 2, panelRect.y + margin.x / 2 + 2);
+        //auto titleFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 24));
+        //TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
+        //auto phaseText = unique_sdl_text(TTF_CreateText(textEngine, titleFont.get(), "阶段", 6));
+        //TTF_DrawRendererText(phaseText.get(), panelRect.x + margin.x * 5 / 2, panelRect.y + margin.x / 2 + 2);
         auto progressRect = SDL_FRect{ HPRect.x, phaseRect.y - margin.x / 5 * 2, HPRect.w, phaseRect.h / 2 };
         SDL_RenderFillRect(renderer, &progressRect);
         progressRect.y += margin.x / 5 * 4 + progressRect.h;
@@ -168,17 +168,28 @@ namespace yobot {
         return *this;
     }
 
-    paint& paint::refreshTotalProgress(const std::array<Progress, 2>& progresses)
+    paint& paint::refreshTotalProgress(const char phase, const std::array<Progress, 2>& progresses)
     {
         SDL_SetRenderViewport(m_renderer.get(), &clipRect);
+        SDLSetDrawColor(m_renderer.get(), halfTransparent);
         auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
-        auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 2 };
+        auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 12 - iconRect.h * 5};
         auto progressRect = SDL_FRect{ HPRect.x, phaseRect.y - margin.x / 5 * 2, HPRect.w, phaseRect.h / 2 };
+        progressRect.w = HPRect.w * (progresses[0].second - progresses[0].first) / progresses[0].second;
+        progressRect.x = HPRect.x + HPRect.w - progressRect.w;
         SDL_RenderFillRect(m_renderer.get(), &progressRect);
         progressRect.y += margin.x / 5 * 4 + progressRect.h;
+        progressRect.w = HPRect.w * (progresses[1].second - progresses[1].first) / progresses[1].second;
+        progressRect.x = HPRect.x + HPRect.w - progressRect.w;
         SDL_RenderFillRect(m_renderer.get(), &progressRect);
+        auto titleFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 24));
+        TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
+        TTF_SetFontWrapAlignment(titleFont.get(), TTF_HORIZONTAL_ALIGN_CENTER);
+        auto phaseStr = std::format("阶段\n{}", phase);
+        auto phaseText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), titleFont.get(), phaseStr.c_str(), phaseStr.length()));
+        TTF_DrawRendererText(phaseText.get(), panelRect.x + margin.x * 5 / 2, panelRect.y + margin.x / 2 + 2);
         return *this;
     }
 
