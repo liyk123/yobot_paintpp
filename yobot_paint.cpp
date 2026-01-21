@@ -42,6 +42,9 @@ namespace yobot {
     constexpr auto margin = SDL_Point{ 10,30 };
     constexpr auto clipRect = SDL_Rect{ margin.x, margin.y, windowSize.x - margin.x * 2, windowSize.y - margin.y * 2 };
     constexpr auto panelRect = SDL_FRect{ 0.0f,0.0f,(float)clipRect.w,(float)clipRect.h };
+    constexpr auto red = SDL_Color{ 192,0,0,255 };
+    constexpr auto blue = SDL_Color{ 0,0,192,255 };
+    constexpr auto purple = SDL_Color{ 128,0,128,255 };
 
     paint::paint() 
         : m_window(nullptr)
@@ -134,10 +137,6 @@ namespace yobot {
         auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 2 };
         SDLSetDrawColor(renderer, transparent);
         SDL_RenderFillRect(renderer, &phaseRect);
-        //auto titleFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 24));
-        //TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
-        //auto phaseText = unique_sdl_text(TTF_CreateText(textEngine, titleFont.get(), "阶段", 6));
-        //TTF_DrawRendererText(phaseText.get(), panelRect.x + margin.x * 5 / 2, panelRect.y + margin.x / 2 + 2);
         auto progressRect = SDL_FRect{ HPRect.x, phaseRect.y - margin.x / 5 * 2, HPRect.w, phaseRect.h / 2 };
         SDL_RenderFillRect(renderer, &progressRect);
         progressRect.y += margin.x / 5 * 4 + progressRect.h;
@@ -159,10 +158,11 @@ namespace yobot {
         return *this;
     }
 
-    paint& paint::refreshBackground(SDL_Color color)
+    paint& paint::refreshBackground(const char phase)
     {
+        static constexpr auto phaseColor = std::array<SDL_Color, 3>{ blue,purple,red };
         SDL_SetRenderViewport(m_renderer.get(), nullptr);
-        SDLSetDrawColor(m_renderer.get(), color);
+        SDLSetDrawColor(m_renderer.get(), phaseColor[phase - 'B']);
         SDL_RenderClear(m_renderer.get());
         SDL_RenderTexture(m_renderer.get(), m_panel.get(), nullptr, nullptr);
         return *this;
@@ -193,7 +193,7 @@ namespace yobot {
         return *this;
     }
 
-    paint& paint::refreshBossProgress(const std::array<std::uint64_t, 5>& laps, const std::array<Progress, 5>& progresses)
+    paint& paint::refreshBossProgress(const std::uint64_t lap, const std::array<bool, 5>& lapFlags, const std::array<Progress, 5>& progresses)
     {
         SDL_SetRenderViewport(m_renderer.get(), &clipRect);
         auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
@@ -226,7 +226,7 @@ namespace yobot {
             auto lapRect = SDL_FRect{ HPRect.x, iconRect.y + margin.x + 4 , 18 * 4,22 };
             SDLSetDrawColor(m_renderer.get(), transparent);
             //SDL_RenderFillRect(m_renderer.get(), &lapRect);
-            auto lapStr = std::format("周目{}", laps[i]);
+            auto lapStr = std::format("周目{}", lap + lapFlags[i]);
             TTF_SetTextString(lapText.get(), lapStr.c_str(), lapStr.length());
             TTF_DrawRendererText(lapText.get(), HPRect.x + margin.x / 2, iconRect.y + margin.x);
         }

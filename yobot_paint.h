@@ -44,9 +44,9 @@ namespace yobot {
         static std::string savePNGBuffer(unique_sdl_surface&& surface);
     public:
         paint& preparePanel(const std::array<std::uint64_t, 5>& iconIds);
-        paint& refreshBackground(SDL_Color color);
+        paint& refreshBackground(const char phase);
         paint& refreshTotalProgress(const char phase, const std::array<Progress, 2>& progresses);
-        paint& refreshBossProgress(const std::array<std::uint64_t, 5>& laps, const std::array<Progress, 5>& progresses);
+        paint& refreshBossProgress(const std::uint64_t lap, const std::array<bool, 5>& lapFlags, const std::array<Progress, 5>& progresses);
         paint& show();
         unique_sdl_surface saveSurface();
         void mainLoop();
