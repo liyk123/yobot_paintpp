@@ -30,9 +30,21 @@ int main(int argc, char const *argv[])
                 std::function<void()> drawProcess = [] {
                     SPDLOG_INFO("Begin");
                     yobot::paint::getInstance()
-                        .refreshBackground('B')
-                        .refreshTotalProgress('B', { {{4,5},{1,9}} })
-                        .refreshBossProgress(1,{ false,false,false,false,false }, { {{1e9,1e9},{5e8,1e9},{1e9,1e9},{1e9,1e9},{1e9,1e9}} })
+                        .refreshBackground('C')
+                        .refreshTotalProgress('C', { {{4,5},{0,30}} })
+                        .refreshBossProgress(
+                            1,
+                            { false,false,false,false,false }, 
+                            { 
+                                {
+                                    {(std::uint64_t)1e9,(std::uint64_t)1e9},
+                                    {(std::uint64_t)5e8,(std::uint64_t)1e9},
+                                    {(std::uint64_t)1e9,(std::uint64_t)1e9},
+                                    {(std::uint64_t)1e9,(std::uint64_t)1e9},
+                                    {(std::uint64_t)1e9,(std::uint64_t)1e9}
+                                } 
+                            }
+                        )
                         ;
                     SPDLOG_INFO("End");
                 };

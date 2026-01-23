@@ -34,6 +34,20 @@ namespace yobot {
         return TTF_SetTextColor(text, color.r, color.g, color.b, color.a);
     }
 
+    inline SDL_FPoint GetCenterPos(TTF_Text* text, const SDL_FRect& rect)
+    {
+        int w, h;
+        TTF_GetTextSize(text, &w, &h);
+        return { rect.x + rect.w / 2 - w / 2.0f,rect.y + rect.h / 2 - h / 2.0f };
+    }
+
+    inline SDL_FPoint GetLeftCenterPos(TTF_Text* text, const SDL_FRect& rect)
+    {
+        int w, h;
+        TTF_GetTextSize(text, &w, &h);
+        return { rect.x, rect.y + rect.h / 2 - h / 2.0f };
+    }
+
     constexpr auto windowSize = SDL_Point{ 480,640 };
     constexpr auto white = SDL_Color{ 255,255,255,128 };
     constexpr auto halfTransparent = SDL_Color{ 0,0,0,128 };
@@ -45,7 +59,7 @@ namespace yobot {
     constexpr auto red = SDL_Color{ 192,0,0,255 };
     constexpr auto blue = SDL_Color{ 0,0,192,255 };
     constexpr auto purple = SDL_Color{ 128,0,128,255 };
-
+    //(115, 166, 231), (206, 105, 165), (206, 80, 66)
     paint::paint() 
         : m_window(nullptr)
         , m_windowSurafce(nullptr)
@@ -160,7 +174,7 @@ namespace yobot {
 
     paint& paint::refreshBackground(const char phase)
     {
-        static constexpr auto phaseColor = std::array<SDL_Color, 3>{ blue,purple,red };
+        static constexpr auto phaseColor = std::array<SDL_Color, 3>{ {{115, 166, 231, 255},{206, 105, 165, 255},{206, 80, 66, 255} } };
         SDL_SetRenderViewport(m_renderer.get(), nullptr);
         SDLSetDrawColor(m_renderer.get(), phaseColor[phase - 'B']);
         SDL_RenderClear(m_renderer.get());
@@ -170,26 +184,41 @@ namespace yobot {
 
     paint& paint::refreshTotalProgress(const char phase, const std::array<Progress, 2>& progresses)
     {
-        SDL_SetRenderViewport(m_renderer.get(), &clipRect);
-        SDLSetDrawColor(m_renderer.get(), halfTransparent);
         auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
         auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 12 - iconRect.h * 5};
-        auto progressRect = SDL_FRect{ HPRect.x, phaseRect.y - margin.x / 5 * 2, HPRect.w, phaseRect.h / 2 };
-        progressRect.w = HPRect.w * (progresses[0].second - progresses[0].first) / progresses[0].second;
-        progressRect.x = HPRect.x + HPRect.w - progressRect.w;
-        SDL_RenderFillRect(m_renderer.get(), &progressRect);
-        progressRect.y += margin.x / 5 * 4 + progressRect.h;
-        progressRect.w = HPRect.w * (progresses[1].second - progresses[1].first) / progresses[1].second;
-        progressRect.x = HPRect.x + HPRect.w - progressRect.w;
-        SDL_RenderFillRect(m_renderer.get(), &progressRect);
+        auto scheduleStr = std::format("距离会战结束还剩{}天", progresses[0].first);
+        auto lapRangeStr = progresses[1].first == 0 ? "∞" : std::format("{}/{}", progresses[1].first, progresses[1].second);
         auto titleFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 24));
-        TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
-        TTF_SetFontWrapAlignment(titleFont.get(), TTF_HORIZONTAL_ALIGN_CENTER);
         auto phaseStr = std::format("阶段\n{}", phase);
         auto phaseText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), titleFont.get(), phaseStr.c_str(), phaseStr.length()));
-        TTF_DrawRendererText(phaseText.get(), panelRect.x + margin.x * 5 / 2, panelRect.y + margin.x / 2 + 2);
+        TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
+        TTF_SetFontWrapAlignment(titleFont.get(), TTF_HORIZONTAL_ALIGN_CENTER);
+        std::array<unique_sdl_text, 2> texts{
+            unique_sdl_text(TTF_CreateText(m_textEngine.get(), titleFont.get(), scheduleStr.c_str(), scheduleStr.length())),
+            unique_sdl_text(TTF_CreateText(m_textEngine.get(), titleFont.get(), lapRangeStr.c_str(), lapRangeStr.length()))
+        };
+        std::array<SDL_FPoint, 2> textPositions;
+        std::array<SDL_FRect,2> rects;
+        for (std::size_t i = 0; i < rects.size(); i++)
+        {
+            rects[i].w = HPRect.w * (progresses[i].second - progresses[i].first) / progresses[i].second;
+            rects[i].x = HPRect.x + HPRect.w - rects[i].w;
+            rects[i].h = phaseRect.h / 2;
+            rects[i].y = phaseRect.y - margin.x / 5 * 2 + (margin.x / 5 * 4 + rects[i].h) * i;
+            textPositions[i] = GetCenterPos(texts[i].get(), { HPRect.x,rects[i].y,HPRect.w,rects[i].h });
+        }
+
+        SDL_SetRenderViewport(m_renderer.get(), &clipRect);
+        SDLSetDrawColor(m_renderer.get(), halfTransparent);
+        SDL_RenderFillRects(m_renderer.get(), rects.data(), (int)rects.size());
+        auto phasePos = GetCenterPos(phaseText.get(), phaseRect);
+        TTF_DrawRendererText(phaseText.get(), phasePos.x, phasePos.y);
+        for (std::size_t i = 0; i < texts.size(); i++)
+        {
+            TTF_DrawRendererText(texts[i].get(), textPositions[i].x, textPositions[i].y);
+        }
         return *this;
     }
 
@@ -219,16 +248,16 @@ namespace yobot {
             SDL_RenderFillRect(m_renderer.get(), &HPProgress);
             auto HPStr = std::format("{}/{}", progresses[i].first, progresses[i].second);
             TTF_SetTextString(HPText.get(), HPStr.c_str(), HPStr.length());
-            int w, h;
-            TTF_GetTextSize(HPText.get(), &w, &h);
-            TTF_DrawRendererText(HPText.get(), HPTextMiddleX - w / 2.0f, HPRect.y);
+            auto pos = GetCenterPos(HPText.get(), HPRect);
+            TTF_DrawRendererText(HPText.get(), pos.x, pos.y);
             iconRect.y -= (float)margin.x;
             auto lapRect = SDL_FRect{ HPRect.x, iconRect.y + margin.x + 4 , 18 * 4,22 };
             SDLSetDrawColor(m_renderer.get(), transparent);
             //SDL_RenderFillRect(m_renderer.get(), &lapRect);
             auto lapStr = std::format("周目{}", lap + lapFlags[i]);
             TTF_SetTextString(lapText.get(), lapStr.c_str(), lapStr.length());
-            TTF_DrawRendererText(lapText.get(), HPRect.x + margin.x / 2, iconRect.y + margin.x);
+            auto lapPos = GetLeftCenterPos(lapText.get(), lapRect);
+            TTF_DrawRendererText(lapText.get(), lapPos.x + margin.x / 2, lapPos.y);
         }
         return *this;
     }
