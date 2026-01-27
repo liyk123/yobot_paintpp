@@ -19,6 +19,9 @@ set(FILE_LIST
 )
 
 find_package(spdlog CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(TBB CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
 find_package(httplib CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
@@ -78,6 +81,12 @@ add_executable(${PROJECT_NAME} ${FILE_LIST})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     spdlog::spdlog_header_only
+    nlohmann_json::nlohmann_json
+    TBB::tbb
+    TBB::tbbmalloc
+    TBB::tbbmalloc_proxy
+    OpenSSL::SSL
+    OpenSSL::Crypto
     httplib::httplib
     SDL3::SDL3
     $<IF:$<TARGET_EXISTS:SDL3_image::SDL3_image-shared>,SDL3_image::SDL3_image-shared,SDL3_image::SDL3_image-static>
@@ -86,3 +95,4 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)

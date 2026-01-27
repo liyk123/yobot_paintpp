@@ -1,6 +1,9 @@
 {
   "dependencies": [
     "spdlog",
+    "nlohmann-json",
+    "tbb",
+    "openssl",
     {
       "name": "cpp-httplib",
       "default-features": false
