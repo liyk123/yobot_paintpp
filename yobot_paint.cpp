@@ -57,9 +57,15 @@ namespace yobot {
     constexpr auto clipRect = SDL_Rect{ margin.x, margin.y, windowSize.x - margin.x * 2, windowSize.y - margin.y * 2 };
     constexpr auto panelRect = SDL_FRect{ 0.0f,0.0f,(float)clipRect.w,(float)clipRect.h };
     constexpr auto red = SDL_Color{ 192,0,0,255 };
-    constexpr auto blue = SDL_Color{ 0,0,192,255 };
-    constexpr auto purple = SDL_Color{ 128,0,128,255 };
-    //(115, 166, 231), (206, 105, 165), (206, 80, 66)
+    constexpr auto blue = SDL_Color{ 0,153,255,255 };
+    constexpr SDL_Color lapColor[] = { {228, 94, 104, 255}, {106, 152, 243, 255} };
+    constexpr SDL_Color phaseColor[] = { 
+        { 132, 1, 244, 255 }, 
+        { 115, 166, 231, 255 }, 
+        { 206, 105, 165, 255 }, 
+        { 206, 80, 66, 255 }, 
+        { 181, 105, 206, 255 }
+    };
     paint::paint() 
         : m_window(nullptr)
         , m_windowSurafce(nullptr)
@@ -174,9 +180,8 @@ namespace yobot {
 
     paint& paint::refreshBackground(const char phase)
     {
-        static constexpr auto phaseColor = std::array<SDL_Color, 3>{ {{115, 166, 231, 255},{206, 105, 165, 255},{206, 80, 66, 255} } };
         SDL_SetRenderViewport(m_renderer.get(), nullptr);
-        SDLSetDrawColor(m_renderer.get(), phaseColor[phase - 'B']);
+        SDLSetDrawColor(m_renderer.get(), phaseColor[phase - 'A']);
         SDL_RenderClear(m_renderer.get());
         SDL_RenderTexture(m_renderer.get(), m_panel.get(), nullptr, nullptr);
         return *this;
@@ -190,7 +195,7 @@ namespace yobot {
         auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 12 - iconRect.h * 5};
         auto scheduleStr = std::format("距离会战结束还剩{}天", progresses[0].first);
         auto lapRangeStr = progresses[1].first == 0 ? "∞" : std::format("{}/{}", progresses[1].first, progresses[1].second);
-        auto titleFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 24));
+        auto titleFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 20));
         auto phaseStr = std::format("阶段\n{}", phase);
         auto phaseText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), titleFont.get(), phaseStr.c_str(), phaseStr.length()));
         TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
@@ -252,8 +257,8 @@ namespace yobot {
             TTF_DrawRendererText(HPText.get(), pos.x, pos.y);
             iconRect.y -= (float)margin.x;
             auto lapRect = SDL_FRect{ HPRect.x, iconRect.y + margin.x + 4 , 18 * 4,22 };
-            SDLSetDrawColor(m_renderer.get(), transparent);
-            //SDL_RenderFillRect(m_renderer.get(), &lapRect);
+            SDLSetDrawColor(m_renderer.get(), lapColor[lapFlags[i]]);
+            SDL_RenderFillRect(m_renderer.get(), &lapRect);
             auto lapStr = std::format("周目{}", lap + lapFlags[i]);
             TTF_SetTextString(lapText.get(), lapStr.c_str(), lapStr.length());
             auto lapPos = GetLeftCenterPos(lapText.get(), lapRect);

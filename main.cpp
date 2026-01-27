@@ -1,40 +1,48 @@
 #include "yobot_paint.h"
+#include "yobot_bossData.h"
 #include <httplib.h>
 #include <spdlog/spdlog.h>
+#include <shared_mutex>
 
-constexpr auto logPattern = "%m-%d %H:%M:%S.%e [%^%l%$] [thread:%t] [%s:%#] %v";
+constexpr auto LogPattern = "%m-%d %H:%M:%S.%e [%^%l%$] [thread:%t] [%s:%#] %v";
+constexpr auto IconDir = "icon";
 
 inline void InitEnv()
 {
-    spdlog::default_logger()->set_pattern(logPattern);
+    spdlog::default_logger()->set_pattern(LogPattern);
 }
 
 int main(int argc, char const *argv[])
 {
     InitEnv();
+    ordered_json bossData = yobot::updateBossData();
+    std::shared_mutex mtBossData;
+    SPDLOG_INFO(bossData["boss_id"]["cn"].dump());
     yobot::paint::getInstance()
-        .preparePanel({ 312501,316600,300701,316102,302600 })
+        .preparePanel(bossData["boss_id"]["cn"])
         .show();
     httplib::Server server;
     std::jthread httpServer([&]() {
         server.set_logger([](const httplib::Request& req, const httplib::Response& resp) {
             SPDLOG_INFO("[{}] {} status: {} bytes: {}", req.method, req.path, resp.status, resp.body.size());
-        }).Get("/update", [](const httplib::Request& req, httplib::Response& resp) {
-
-        }).Get("/progress", [](const httplib::Request& req, httplib::Response& resp) {
+        }).Get("/update", [&](const httplib::Request& req, httplib::Response& resp) {
+            std::unique_lock lock(mtBossData);
+            bossData = yobot::updateBossData();
+        }).Get("/progress", [&](const httplib::Request& req, httplib::Response& resp) {
+            std::shared_lock lock(mtBossData);
             if (req.params.contains("data"))
             {
-                auto data = req.params.find("data")->second;
+                auto&& data = req.params.find("data")->second;
                 SPDLOG_INFO("{}", data);
                 std::promise<yobot::unique_sdl_surface> drawPromise;
                 std::function<void()> drawProcess = [] {
                     SPDLOG_INFO("Begin");
                     yobot::paint::getInstance()
-                        .refreshBackground('C')
-                        .refreshTotalProgress('C', { {{4,5},{0,30}} })
+                        .refreshBackground('B')
+                        .refreshTotalProgress('B', { {{4,5},{0,30}} })
                         .refreshBossProgress(
                             1,
-                            { false,false,false,false,false }, 
+                            { false,true,false,true,false }, 
                             { 
                                 {
                                     {(std::uint64_t)1e9,(std::uint64_t)1e9},
