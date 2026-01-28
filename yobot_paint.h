@@ -7,17 +7,16 @@
 #include <string>
 #include <future>
 #include <functional>
+#include "tools.hpp"
+
+constexpr char IconDir[] = "icon";
+constexpr char FontDir[] = "font";
+constexpr char DefaultIcon[] = "000000.webp";
+constexpr char DefaultFont[] = "NotoSansSC-Regular.ttf";
+constexpr auto DefaultIconPath = FixedString(IconDir) + FixedString("/") + FixedString(DefaultIcon);
+constexpr auto DefaultFontPath = FixedString(FontDir) + FixedString("/") + FixedString(DefaultFont);
 
 namespace yobot {
-
-    template <typename T, auto (*Destructor)(T*)>
-    struct GenericDeleter
-    {
-        void operator()(T* ptr) const noexcept
-        {
-            if (ptr) Destructor(ptr);
-        }
-    };
 
     using SDLSurfaceDeleter = GenericDeleter<SDL_Surface, SDL_DestroySurface>;
     using unique_sdl_surface = std::unique_ptr<SDL_Surface, SDLSurfaceDeleter>;

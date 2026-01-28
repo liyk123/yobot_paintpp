@@ -18,6 +18,7 @@ set(FILE_LIST
     "yobot_paint.cpp"
     "yobot_bossData.h" 
     "yobot_bossData.cpp"
+    "tools.hpp"
 )
 
 find_package(spdlog CONFIG REQUIRED)

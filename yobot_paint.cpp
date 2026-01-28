@@ -48,6 +48,11 @@ namespace yobot {
         return { rect.x, rect.y + rect.h / 2 - h / 2.0f };
     }
 
+    inline auto toOKFAILED(bool flag)
+    {
+        return flag ? "\033[1;32mOK\033[0m" : "\033[1;31mFAILED\033[0m";
+    }
+
     constexpr auto windowSize = SDL_Point{ 480,640 };
     constexpr auto white = SDL_Color{ 255,255,255,128 };
     constexpr auto halfTransparent = SDL_Color{ 0,0,0,128 };
@@ -66,6 +71,7 @@ namespace yobot {
         { 206, 80, 66, 255 }, 
         { 181, 105, 206, 255 }
     };
+
     paint::paint() 
         : m_window(nullptr)
         , m_windowSurafce(nullptr)
@@ -87,7 +93,7 @@ namespace yobot {
             m_renderer.reset(SDL_CreateSoftwareRenderer(m_windowSurafce.get()));
         }
         m_textEngine.reset(TTF_CreateRendererTextEngine(m_renderer.get()));
-        SPDLOG_INFO("SDL_Init {} TTF_Init {} window:{} renderer:{}", sdlInitRet, ttfInitRet, SDL_GetWindowID(m_window.get()), SDL_GetRendererName(m_renderer.get()));
+        SPDLOG_INFO("SDL_Init:{} TTF_Init:{} window:{} renderer:{}", toOKFAILED(sdlInitRet), toOKFAILED(ttfInitRet), SDL_GetWindowID(m_window.get()), SDL_GetRendererName(m_renderer.get()));
     }
 
     paint::~paint()
@@ -166,7 +172,7 @@ namespace yobot {
     paint& paint::preparePanel(const std::array<std::uint64_t, 5>& iconIds)
     {
         ClearPanel(m_renderer.get());
-        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
+        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), DefaultIconPath.data));
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
         for (auto&& id : iconIds | std::views::reverse)
@@ -189,13 +195,13 @@ namespace yobot {
 
     paint& paint::refreshTotalProgress(const char phase, const std::array<Progress, 2>& progresses)
     {
-        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
+        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), DefaultIconPath.data));
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
         auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 12 - iconRect.h * 5};
         auto scheduleStr = std::format("距离会战结束还剩{}天", progresses[0].first);
         auto lapRangeStr = progresses[1].first == 0 ? "∞" : std::format("{}/{}", progresses[1].first, progresses[1].second);
-        auto titleFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 20));
+        auto titleFont = unique_sdl_font(TTF_OpenFont(DefaultFontPath.data, 20));
         auto phaseStr = std::format("阶段\n{}", phase);
         auto phaseText = unique_sdl_text(TTF_CreateText(m_textEngine.get(), titleFont.get(), phaseStr.c_str(), phaseStr.length()));
         TTF_SetFontHinting(titleFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
@@ -230,10 +236,10 @@ namespace yobot {
     paint& paint::refreshBossProgress(const std::uint64_t lap, const std::array<bool, 5>& lapFlags, const std::array<Progress, 5>& progresses)
     {
         SDL_SetRenderViewport(m_renderer.get(), &clipRect);
-        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), "icon/000000.webp"));
+        auto texture0 = unique_sdl_texture(IMG_LoadTexture(m_renderer.get(), DefaultIconPath.data));
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
-        auto lapFont = unique_sdl_font(TTF_OpenFont("font/NotoSansSC-Regular.ttf", 18));
+        auto lapFont = unique_sdl_font(TTF_OpenFont(DefaultFontPath.data, 18));
         TTF_SetFontStyle(lapFont.get(), TTF_STYLE_BOLD);
         TTF_SetFontHinting(lapFont.get(), TTF_HINTING_LIGHT_SUBPIXEL);
         auto HPFont = unique_sdl_font(TTF_CopyFont(lapFont.get()));

@@ -5,6 +5,8 @@
 #include <spdlog/spdlog.h>
 #include "yobot_bossData.h"
 
+constexpr auto IconDir = "icon";
+
 namespace yobot {
     using BoosData = std::tuple<std::string_view, json::array_t, json::array_t, json::array_t, json::array_t>;
 
@@ -51,7 +53,7 @@ namespace yobot {
         for (auto&& id : range)
         {
             auto filename = std::to_string(id) + ".webp";
-            auto filepath = std::filesystem::path(std::string(IconDir) + "/" + filename);
+            auto filepath = std::filesystem::path(IconDir) / filename;
             if (!std::filesystem::exists(filepath))
             {
                 auto result = client.Get("/icon/unit/" + filename);
@@ -73,24 +75,10 @@ namespace yobot {
         };
         tbb::concurrent_unordered_set<json::number_integer_t> idSet;
         tbb::parallel_for(0ULL, vBossData.size(), [&](std::size_t it) {
-            try
-            {
-                fetchBossData(vBossData[it], idSet);
-            }
-            catch (std::exception e)
-            {
-                SPDLOG_ERROR(e.what());
-            }
+            fetchBossData(vBossData[it], idSet);
         });
         tbb::parallel_for(idSet.range(), [](auto&& range) {
-            try
-            {
-                fetchBossIcon(range);
-            }
-            catch (std::exception e)
-            {
-                SPDLOG_ERROR(e.what());
-            }
+            fetchBossIcon(range);
         });
         ordered_json jbossData;
         for (auto&& x : vBossData)

@@ -5,7 +5,6 @@ using nlohmann::json;
 using nlohmann::ordered_json;
 
 namespace yobot {
-    constexpr auto IconDir = "icon";
     namespace area {
         constexpr std::string_view cn = "cn";
         constexpr std::string_view tw = "tw";
