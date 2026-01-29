@@ -15,6 +15,7 @@ inline bool DownloadBinaryFile(const std::string_view& host, const std::string_v
     auto ret = result && result->status == httplib::OK_200;
     if (ret)
     {
+        SPDLOG_INFO("{} {}", savePath, result->body.size());
         std::ofstream(savePath.data(), std::ios::binary) << result->body;
     }
     return ret;
@@ -37,10 +38,49 @@ inline void InitEnv()
     }
 }
 
+void inline Update(json& bossData)
+{
+    bossData = yobot::updateBossData();
+    SPDLOG_INFO(bossData["boss_id"][yobot::area::cn].dump());
+    std::promise<yobot::unique_sdl_surface> drawPromise;
+    std::function<void()> drawProcess = [&] {
+        yobot::paint::getInstance().preparePanel(bossData["boss_id"][yobot::area::cn]);
+    };
+    yobot::paint::getInstance().postDrawProcess(drawProcess, drawPromise);
+    drawPromise.get_future().wait();
+}
+
+inline std::string Process(const std::string_view& statusData, const json& bossData)
+{
+    SPDLOG_INFO("{}", statusData);
+    auto data = json::parse(statusData);
+    auto lap = data["lap"].get<json::number_integer_t>();
+    auto phase = yobot::getPhase(bossData, lap, yobot::area::cn);
+    auto lapMax = bossData["lap_range"][yobot::area::cn][phase][1].get<json::number_integer_t>();
+    auto&& lapFlags = data["lap_flags"];
+    auto&& bossHPs = data["boos_hps"];
+    auto&& bossFullHPs = bossData["boss_hp"][yobot::area::cn][phase];
+    std::array<yobot::Progress, 5> bossProgreses;
+    for (size_t i = 0; i < bossProgreses.size(); i++)
+    {
+        bossProgreses[i] = { bossHPs[i],bossFullHPs[i] };
+    }
+    phase += 'A';
+    std::promise<yobot::unique_sdl_surface> drawPromise;
+    std::function<void()> drawProcess = [&] {
+        yobot::paint::getInstance()
+            .refreshBackground(phase)
+            .refreshTotalProgress(phase, { {{1,1},{lap,lapMax} } })
+            .refreshBossProgress(lap, lapFlags, bossProgreses);
+    };
+    yobot::paint::getInstance().postDrawProcess(drawProcess, drawPromise);
+    return yobot::paint::savePNGBuffer(drawPromise.get_future().get());
+}
+
 int main(int argc, char const *argv[])
 {
     InitEnv();
-    ordered_json bossData = yobot::updateBossData();
+    json bossData = yobot::updateBossData();
     std::shared_mutex mtBossData;
     SPDLOG_INFO(bossData["boss_id"]["cn"].dump());
     yobot::paint::getInstance()
@@ -52,41 +92,18 @@ int main(int argc, char const *argv[])
             SPDLOG_INFO("[{}] {} status: {} bytes: {}", req.method, req.path, resp.status, resp.body.size());
         }).Get("/update", [&](const httplib::Request& req, httplib::Response& resp) {
             std::unique_lock lock(mtBossData);
-            bossData = yobot::updateBossData();
+            Update(bossData);
+            resp.status = httplib::OK_200;
         }).Get("/progress", [&](const httplib::Request& req, httplib::Response& resp) {
             std::shared_lock lock(mtBossData);
             if (req.params.contains("data"))
             {
-                auto&& data = req.params.find("data")->second;
-                SPDLOG_INFO("{}", data);
-                std::promise<yobot::unique_sdl_surface> drawPromise;
-                std::function<void()> drawProcess = [] {
-                    SPDLOG_INFO("Begin");
-                    yobot::paint::getInstance()
-                        .refreshBackground('B')
-                        .refreshTotalProgress('B', { {{4,5},{0,30}} })
-                        .refreshBossProgress(
-                            1,
-                            { false,true,false,true,false }, 
-                            { 
-                                {
-                                    {(std::uint64_t)1e9,(std::uint64_t)1e9},
-                                    {(std::uint64_t)5e8,(std::uint64_t)1e9},
-                                    {(std::uint64_t)1e9,(std::uint64_t)1e9},
-                                    {(std::uint64_t)1e9,(std::uint64_t)1e9},
-                                    {(std::uint64_t)1e9,(std::uint64_t)1e9}
-                                } 
-                            }
-                        )
-                        ;
-                    SPDLOG_INFO("End");
-                };
-                yobot::paint::getInstance().postDrawProcess(drawProcess, drawPromise);
-                resp.body = yobot::paint::savePNGBuffer(drawPromise.get_future().get());
+                resp.body = Process(req.params.find("data")->second, bossData);
+                resp.status = httplib::OK_200;
             }
         }).Get("/quit", [](const httplib::Request& req, httplib::Response& resp) {
             yobot::paint::getInstance().postQuit();
-            resp.status = 200;
+            resp.status = httplib::OK_200;
         }).listen("127.0.0.1", 8080);
     });
     yobot::paint::getInstance().mainLoop();

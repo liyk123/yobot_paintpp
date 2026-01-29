@@ -11,5 +11,7 @@ namespace yobot {
         constexpr std::string_view jp = "jp";
     }
 
-    ordered_json updateBossData();
+    json updateBossData();
+
+    std::int8_t getPhase(const json& bossData, const std::int64_t lap, const std::string_view& gameServer);
 }
