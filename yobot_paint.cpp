@@ -122,7 +122,6 @@ namespace yobot {
         auto internal_ptr = (char*)SDL_GetPointerProperty(props, SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, nullptr);
         auto buff = std::string(internal_ptr, SDL_GetIOSize(ostream));
         SDL_CloseIO(ostream);
-        SPDLOG_INFO("SAVE {} bytes", buff.size());
         return buff;
     }
 
@@ -199,7 +198,7 @@ namespace yobot {
         auto iconRect = SDL_FRect{ (float)margin.x,panelRect.h,(float)(texture0->w / 8 * 5),(float)(texture0->h / 8 * 5) };
         auto HPRect = SDL_FRect{ margin.x * 3 + iconRect.w,0.0f,panelRect.w - iconRect.w - (float)(margin.x * 4),iconRect.h / 4 };
         auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 12 - iconRect.h * 5};
-        auto scheduleStr = std::format("距离会战结束还剩{}天", progresses[0].first);
+        auto scheduleStr = std::format("距离会战结束还剩{}天", progresses[0].first / (24 * 60 * 60));
         auto lapRangeStr = progresses[1].first == 0 ? "∞" : std::format("{}/{}", progresses[1].first, progresses[1].second);
         auto titleFont = unique_sdl_font(TTF_OpenFont(DefaultFontPath.data, 20));
         auto phaseStr = std::format("阶段\n{}", phase);

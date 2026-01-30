@@ -78,11 +78,11 @@ namespace yobot {
 
     json updateBossData()
     {
-        std::vector<yobot::BoosData> vBossData = {
+        std::array<yobot::BoosData, 3> vBossData = { {
             {area::cn, {}, {}, {}, {}, {}},
             {area::tw, {}, {}, {}, {}, {}},
             {area::jp, {}, {}, {}, {}, {}}
-        };
+        } };
         tbb::concurrent_unordered_set<json::number_integer_t> idSet;
         tbb::parallel_for(0ULL, vBossData.size(), [&](std::size_t it) {
             fetchBossData(vBossData[it], idSet);
