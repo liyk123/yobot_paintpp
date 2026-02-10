@@ -14,6 +14,11 @@ project (${PROJECT_NAME})
 
 set(FILE_LIST
     "main.cpp"
+    "yobot_paint.h" 
+    "yobot_paint.cpp"
+    "yobot_bossData.h" 
+    "yobot_bossData.cpp"
+    "tools.hpp"
 )
 
 find_package(spdlog CONFIG REQUIRED)
@@ -73,6 +78,7 @@ set(GIT_DATE "unknown")
 get_git_date_time(GIT_DATE)
 add_definitions(-DGIT_DATE="${GIT_DATE}")
 
+add_definitions(-DPROJECT_NAME="${PROJECT_NAME}")
 
 add_executable(${PROJECT_NAME} ${FILE_LIST})
 
