@@ -1,6 +1,9 @@
 {
   "dependencies": [
     "spdlog",
+    "nlohmann-json",
+    "tbb",
+    "openssl",
     {
       "name": "cpp-httplib",
       "default-features": false
@@ -12,6 +15,7 @@
     {
       "name": "sdl3-image",
       "features": [ "png", "webp" ]
-    }
+    },
+    "sdl3-ttf"
   ]
 }
