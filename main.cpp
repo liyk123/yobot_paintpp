@@ -5,6 +5,7 @@
 #include <shared_mutex>
 #include <fstream>
 
+constexpr auto Version = "Branch: " GIT_BRANCH "\nCommit: " GIT_VERSION "\nDate: " GIT_DATE;
 constexpr auto LogPattern = "%m-%d %H:%M:%S.%e [%^%l%$] [thread:%t] [%s:%#] %v";
 constexpr auto DefaultArea = yobot::area::cn;
 constexpr auto DefaultHost = "0.0.0.0";
@@ -106,6 +107,8 @@ int main(int argc, char const *argv[])
     std::jthread httpServer([&]() {
         server.set_logger([](const httplib::Request& req, const httplib::Response& resp) {
             SPDLOG_INFO("[{}] {} {} status: {} bytes: {}", req.method, req.path, json(req.params).dump(), resp.status, resp.body.size());
+        }).Get("/", [](const httplib::Request& req, httplib::Response& resp) {
+            resp.body.assign(Version);
         }).Get("/update", [&](const httplib::Request& req, httplib::Response& resp) {
             std::unique_lock lock(mtBossData);
             Update(bossData);
