@@ -28,6 +28,9 @@ namespace yobot {
     using SDLRendererDeleter = GenericDeleter<SDL_Renderer, SDL_DestroyRenderer>;
     using SDLRendererTextEngineDeleter = GenericDeleter<TTF_TextEngine, TTF_DestroyRendererTextEngine>;
 
+    using SDLFontDeleter = GenericDeleter<TTF_Font, TTF_CloseFont>;
+    using unique_sdl_font = std::unique_ptr<TTF_Font, SDLFontDeleter>;
+
     using Progress = std::pair<std::uint64_t, std::uint64_t>;
 
     class paint
@@ -41,13 +44,14 @@ namespace yobot {
         static paint& getInstance();
     public:
         static std::string savePNGBuffer(unique_sdl_surface&& surface);
+    private:
+        void loadRes();
     public:
         paint& preparePanel(const std::array<std::uint64_t, 5>& iconIds);
         paint& refreshBackground(const char phase);
         paint& refreshTotalProgress(const char phase, const std::array<Progress, 2>& progresses);
         paint& refreshBossProgress(const std::uint64_t lap, const std::array<bool, 5>& lapFlags, const std::array<Progress, 5>& progresses);
         paint& show();
-        unique_sdl_surface saveSurface();
         void mainLoop();
         bool postDrawProcess(std::function<void()>& process, std::promise<unique_sdl_surface>& promise);
         bool postQuit();
@@ -57,6 +61,10 @@ namespace yobot {
         std::unique_ptr<SDL_Renderer, SDLRendererDeleter> m_renderer;
         std::unique_ptr<TTF_TextEngine, SDLRendererTextEngineDeleter> m_textEngine;
         unique_sdl_texture m_panel;
+        unique_sdl_texture m_texture0;
+        unique_sdl_font m_titleFont;
+        unique_sdl_font m_lapFont;
+        unique_sdl_font m_hpFont;
     };
 }
 
