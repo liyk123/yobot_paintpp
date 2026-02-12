@@ -282,7 +282,8 @@ namespace yobot {
             SDL_RenderFillRect(m_renderer.get(), &HPRect);
             auto HPProgress = HPRect;
             HPProgress.w = HPProgress.w / progresses[i].second * progresses[i].first;
-            SDLSetDrawColor(m_renderer.get(), {192,0,0,255});
+            HPProgress.w = HPProgress.w < 1.0f && HPProgress.w > 0 ? 1.0f : HPProgress.w;
+            SDLSetDrawColor(m_renderer.get(), red);
             SDL_RenderFillRect(m_renderer.get(), &HPProgress);
             auto HPStr = std::format("{}/{}", progresses[i].first, progresses[i].second);
             TTF_SetTextString(HPText.get(), HPStr.c_str(), HPStr.length());
