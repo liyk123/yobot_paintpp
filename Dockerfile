@@ -5,7 +5,7 @@
 # - Create non-root user 'appuser' in runtime image, chown runtime files to that user
 # - Expose TCP port 9540
 
-FROM python:3.13-trixie AS builder
+FROM debian:trixie AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG VCPKG_TRIPLET=x64-linux
@@ -16,12 +16,9 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential ca-certificates curl git zip unzip tar \
         pkg-config cmake ninja-build autoconf autoconf-archive automake \
-        libtool libltdl-dev findutils libxcursor-dev wget \
-        gnome-desktop-testing libasound2-dev libpulse-dev \
-        libaudio-dev libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev \
-        libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
-        libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
-        libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev && \
+        libtool libltdl-dev findutils wget \
+        libspdlog-dev nlohmann-json3-dev libtbb-dev openssl libcpp-httplib-dev \
+        libsdl3-dev libsdl3-image-dev libsdl3-ttf-dev && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
@@ -34,16 +31,10 @@ RUN mkdir -p /src/icon /src/font && \
     curl -fSL "https://redive.estertion.win/icon/unit/000000.webp" -o /src/icon/000000.webp && \
     curl -fSL "https://github.com/jsntn/webfonts/raw/refs/heads/master/NotoSansSC-Regular.ttf" -o /src/font/NotoSansSC-Regular.ttf
 
-# Install and bootstrap vcpkg
-RUN git clone --depth 1 https://github.com/microsoft/vcpkg.git /vcpkg && \
-    /vcpkg/bootstrap-vcpkg.sh
-
-# Expose vcpkg environment for CMakePresets (the preset uses $env{VCPKG_ROOT})
-ENV VCPKG_ROOT=/vcpkg
-ENV VCPKG_DEFAULT_TRIPLET=${VCPKG_TRIPLET}
+WORKDIR /src/build
 
 # Configure using CMakePresets (Release preset sets binaryDir to ${sourceDir}/build)
-RUN cmake --preset ${CONFIGURE_PRESET} -S /src || (echo "cmake configure preset failed" && false)
+RUN cmake -DCMAKE_BUILD_TYPE=${CONFIGURE_PRESET} -S /src || (echo "cmake configure preset failed" && false)
 
 # Build the specific target
 RUN cmake --build /src/build --target ${TARGET_NAME} -- -j$(nproc)
@@ -52,18 +43,14 @@ RUN cmake --build /src/build --target ${TARGET_NAME} -- -j$(nproc)
 RUN mkdir -p /dist && \
     cp "$(find /src/build -type f -executable -name ${TARGET_NAME} -print -quit)" /dist/ || (echo "built executable not found" && false)
 
-# Collect shared libraries (*.so*) from the build output only
-RUN mkdir -p /dist/build_libs && \
-    find /src/build -type f -name "*.so*" -print -exec cp {} /dist/build_libs/ \;
-
-
 # ---------- Runtime ----------
 FROM debian:trixie-slim AS runtime
 ARG CMAKE_INSTALL_PREFIX=/usr/local
 ARG TARGET_NAME=yobot_paintpp
 
 RUN apt-get update && apt-get upgrade -y && apt-get autoremove -y && \
-    apt-get install -y --no-install-recommends ca-certificates libstdc++6 adduser libpng-dev && \
+    apt-get install -y --no-install-recommends ca-certificates libstdc++6 adduser \
+        libtbb12 openssl libcpp-httplib0.18 libsdl3-0 libsdl3-image0 libsdl3-ttf0 && \
     apt-get clean && \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo 'Asia/Shanghai' > /etc/timezone
@@ -74,10 +61,6 @@ COPY --from=builder /dist/${TARGET_NAME} ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_NA
 # Copy runtime resources
 COPY --from=builder /src/icon /app/icon
 COPY --from=builder /src/font /app/font
-
-# Copy build-time shared libs into /usr/local/lib
-COPY --from=builder /dist/build_libs/ /usr/local/lib/
-RUN ldconfig
 
 # Create non-root user and ensure ownership/permissions
 RUN adduser --disabled-password --gecos "" appuser || true && \
