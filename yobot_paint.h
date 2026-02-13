@@ -44,14 +44,13 @@ namespace yobot {
         static paint& getInstance();
     public:
         static std::string savePNGBuffer(unique_sdl_surface&& surface);
-    private:
-        void loadRes();
     public:
+        paint& loadRes();
         paint& preparePanel(const std::array<std::uint64_t, 5>& iconIds);
         paint& refreshBackground(const char phase);
         paint& refreshTotalProgress(const char phase, const std::array<Progress, 2>& progresses);
         paint& refreshBossProgress(const std::uint64_t lap, const std::array<bool, 5>& lapFlags, const std::array<Progress, 5>& progresses);
-        paint& show();
+        bool show();
         void mainLoop();
         bool postDrawProcess(std::function<void()>& process, std::promise<unique_sdl_surface>& promise);
         bool postQuit();

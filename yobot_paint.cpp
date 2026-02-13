@@ -95,7 +95,6 @@ namespace yobot {
         }
         m_textEngine.reset(TTF_CreateRendererTextEngine(m_renderer.get()));
         SPDLOG_INFO("SDL_Init:{} TTF_Init:{} window:{} renderer:{}", toOKFAILED(sdlInitRet), toOKFAILED(ttfInitRet), SDL_GetWindowID(m_window.get()), SDL_GetRendererName(m_renderer.get()));
-        loadRes();
     }
 
     paint::~paint()
@@ -131,7 +130,7 @@ namespace yobot {
         return buff;
     }
 
-    void paint::loadRes()
+    paint& paint::loadRes()
     {
         m_texture0.reset(IMG_LoadTexture(m_renderer.get(), DefaultIconPath.data));
         auto font = unique_sdl_font(TTF_OpenFont(DefaultFontPath.data, 12));
@@ -144,6 +143,7 @@ namespace yobot {
         TTF_SetFontStyle(m_lapFont.get(), TTF_STYLE_BOLD);
         m_hpFont.reset(TTF_CopyFont(font.get()));
         TTF_SetFontStyle(m_hpFont.get(), TTF_STYLE_BOLD);
+        return *this;
     }
 
     inline unique_sdl_surface SaveSurface(SDL_Renderer* renderer)
@@ -301,10 +301,9 @@ namespace yobot {
         return *this;
     }
 
-    paint& paint::show()
+    bool paint::show()
     {
-        SDL_RenderPresent(m_renderer.get());
-        return *this;
+        return SDL_RenderPresent(m_renderer.get());
     }
 
     void paint::mainLoop()

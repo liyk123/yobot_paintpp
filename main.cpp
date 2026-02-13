@@ -101,6 +101,7 @@ int main(int argc, char const *argv[])
     std::shared_mutex mtBossData;
     SPDLOG_INFO(bossData["boss_id"][DefaultArea].dump());
     yobot::paint::getInstance()
+        .loadRes()
         .preparePanel(bossData["boss_id"][DefaultArea])
         .show();
     httplib::Server server;
