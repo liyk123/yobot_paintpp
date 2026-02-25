@@ -50,7 +50,7 @@ ARG TARGET_NAME=yobot_paintpp
 
 RUN apt-get update && apt-get upgrade -y && apt-get autoremove -y && \
     apt-get install -y --no-install-recommends ca-certificates libstdc++6 adduser \
-        libtbb12 openssl libcpp-httplib0.18 libsdl3-0 libsdl3-image0 libsdl3-ttf0 && \
+        libspdlog1.15 libtbb12 openssl libcpp-httplib0.18 libsdl3-0 libsdl3-image0 libsdl3-ttf0 && \
     apt-get clean && \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo 'Asia/Shanghai' > /etc/timezone
