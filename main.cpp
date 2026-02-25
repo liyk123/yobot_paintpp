@@ -69,7 +69,7 @@ inline auto PrepareRenderData(const json& statusData, const json& bossData)
     {
         bossProgreses[i] = { bossHPs.at(i),bossFullHPs[i] };
     }
-    auto currentTime = std::chrono::system_clock::now().time_since_epoch().count();
+    auto currentTime = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     auto startTime = bossData["time_range"][DefaultArea][0].get<json::number_integer_t>();
     auto endTime = bossData["time_range"][DefaultArea][1].get<json::number_integer_t>();
     std::array<yobot::Progress, 2> totalProgesses = { {
