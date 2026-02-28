@@ -66,11 +66,14 @@ namespace yobot {
             auto filepath = std::filesystem::path(IconDir) / filename;
             if (!std::filesystem::exists(filepath))
             {
-                auto result = client.Get("/icon/unit/" + filename);
+                auto ofs = std::ofstream(filepath, std::ios::binary);
+                auto result = client.Get("/icon/unit/" + filename, [&ofs](const char* data, size_t data_length) {
+                    ofs.write(data, data_length);
+                    return true;
+                });
                 if (result && result->status == httplib::OK_200)
                 {
-                    SPDLOG_INFO("{} {}", filepath.generic_string(), result->body.size());
-                    std::ofstream(filepath, std::ios::binary) << result->body;
+                    SPDLOG_INFO("{} {}", filepath.generic_string(), (std::size_t)ofs.tellp());
                 }
             }
         }
