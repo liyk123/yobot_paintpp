@@ -9,7 +9,7 @@
 constexpr auto IconDir = "icon";
 
 namespace yobot {
-    using BoosData = std::tuple<std::string_view, json::array_t, json::array_t, json::array_t, json::array_t, json::array_t>;
+    using BossData = std::tuple<std::string_view, json::array_t, json::array_t, json::array_t, json::array_t, json::array_t>;
 
     inline std::int64_t toSeconds(const json &t)
     {
@@ -19,7 +19,7 @@ namespace yobot {
         return ret.time_since_epoch().count();
     }
 
-    inline void fetchBossData(BoosData& bossData, tbb::concurrent_unordered_set<json::number_integer_t>& idSet)
+    inline void fetchBossData(BossData& bossData, tbb::concurrent_unordered_set<json::number_integer_t>& idSet)
     {
         auto&& [itArea, itBossHP, itLapRange, itBossId, itBossName, itTimeRange] = bossData;
         httplib::Client client("https://pcr.satroki.tech");
@@ -81,7 +81,7 @@ namespace yobot {
 
     json updateBossData()
     {
-        std::array<yobot::BoosData, 3> vBossData = { {
+        std::array<yobot::BossData, 3> vBossData = { {
             {area::cn, {}, {}, {}, {}, {}},
             {area::tw, {}, {}, {}, {}, {}},
             {area::jp, {}, {}, {}, {}, {}}
