@@ -44,7 +44,7 @@ inline void InitEnv()
 
 inline void Update(json& bossData)
 {
-    bossData = yobot::updateBossData();
+    yobot::updateBossData(bossData);
     SPDLOG_INFO(bossData["boss_id"][DefaultArea].dump());
     std::promise<yobot::unique_sdl_surface> drawPromise;
     std::function<void()> drawProcess = [&] {
@@ -97,7 +97,8 @@ inline std::string Progress(const json& statusData, const json& bossData)
 int main(int argc, char const *argv[])
 {
     InitEnv();
-    json bossData = yobot::updateBossData();
+    json bossData;
+    yobot::updateBossData(bossData);
     std::shared_mutex mtBossData;
     SPDLOG_INFO(bossData["boss_id"][DefaultArea].dump());
     yobot::paint::getInstance()

@@ -11,6 +11,18 @@ constexpr auto IconDir = "icon";
 namespace yobot {
     using BossData = std::tuple<std::string_view, json::array_t, json::array_t, json::array_t, json::array_t, json::array_t>;
 
+    static auto& GetThreadStringBuffers()
+    {
+        static tbb::enumerable_thread_specific<std::string> buffers;
+        return buffers;
+    }
+
+    static auto& GetLimitedArena()
+    {
+        static tbb::task_arena arena(3);
+        return arena;
+    }
+
     inline std::int64_t toSeconds(const json &t)
     {
         std::chrono::sys_time<std::chrono::seconds> ret;
@@ -24,10 +36,14 @@ namespace yobot {
         auto&& [itArea, itBossHP, itLapRange, itBossId, itBossName, itTimeRange] = bossData;
         httplib::Client client("https://pcr.satroki.tech");
         client.set_follow_location(true);
-        auto result = client.Get("/api/Quest/GetClanBattleInfos?s=" + std::string(itArea));
+        auto&& buf = GetThreadStringBuffers().local();
+        auto result = client.Get("/api/Quest/GetClanBattleInfos?s=" + std::string(itArea), [&buf](const char* data, size_t data_length) {
+            buf.append(data, data_length);
+            return true;
+        });
         if (result && result->status == httplib::OK_200)
         {
-            auto clanBattleInfo = json::parse(std::string_view(result->body));
+            auto clanBattleInfo = json::parse(std::string_view(buf));
             auto& lastInfo = *(clanBattleInfo.rbegin());
             auto& phases = lastInfo["phases"];
             if (phases.is_array())
@@ -54,6 +70,7 @@ namespace yobot {
                 itTimeRange = { toSeconds(lastInfo["startTime"]), toSeconds(lastInfo["endTime"]) };
             }
         }
+        buf.clear();
     }
 
     inline void fetchBossIcon(tbb::concurrent_unordered_set<json::number_integer_t>::range_type range)
@@ -79,7 +96,7 @@ namespace yobot {
         }
     }
 
-    json updateBossData()
+    void updateBossData(json &bossData)
     {
         std::array<yobot::BossData, 3> vBossData = { {
             {area::cn, {}, {}, {}, {}, {}},
@@ -87,23 +104,23 @@ namespace yobot {
             {area::jp, {}, {}, {}, {}, {}}
         } };
         tbb::concurrent_unordered_set<json::number_integer_t> idSet;
-        tbb::parallel_for(std::size_t(0), vBossData.size(), [&](std::size_t it) {
-            fetchBossData(vBossData[it], idSet);
+        GetLimitedArena().execute([&] {
+            tbb::parallel_for(std::size_t(0), vBossData.size(), [&](std::size_t it) {
+                fetchBossData(vBossData[it], idSet);
+            });
+            tbb::parallel_for(idSet.range(), [](auto&& range) {
+                fetchBossIcon(range);
+            });
         });
-        tbb::parallel_for(idSet.range(), [](auto&& range) {
-            fetchBossIcon(range);
-        });
-        json jbossData;
         for (auto&& x : vBossData)
         {
             auto& [a, b, c, d, e, f] = x;
-            jbossData["boss_hp"][a] = b;
-            jbossData["lap_range"][a] = c;
-            jbossData["boss_id"][a] = d;
-            jbossData["boss_name"][a] = e;
-            jbossData["time_range"][a] = f;
+            bossData["boss_hp"][a] = b;
+            bossData["lap_range"][a] = c;
+            bossData["boss_id"][a] = d;
+            bossData["boss_name"][a] = e;
+            bossData["time_range"][a] = f;
         }
-        return jbossData;
     }
 
     std::int8_t getPhase(const json& bossData, const std::int64_t lap, const std::string_view& gameServer)
