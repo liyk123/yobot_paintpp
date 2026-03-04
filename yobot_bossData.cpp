@@ -118,12 +118,17 @@ namespace yobot {
         });
         for (auto&& x : vBossData)
         {
-            auto& [a, b, c, d, e, f] = x;
+            auto&& [a, b, c, d, e, f] = x;
+            auto&& timeRange = bossData["time_range"][a];
+            if (!bossData.is_null() && !timeRange.is_null() && *timeRange.begin() == *f.begin())
+            {
+                continue;
+            }
             bossData["boss_hp"][a] = b;
             bossData["lap_range"][a] = c;
             bossData["boss_id"][a] = d;
             bossData["boss_name"][a] = e;
-            bossData["time_range"][a] = f;
+            timeRange = f;
         }
     }
 
