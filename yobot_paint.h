@@ -43,7 +43,7 @@ namespace yobot {
         paint(paint&&) = delete;
         static paint& getInstance();
     public:
-        static std::string savePNGBuffer(unique_sdl_surface&& surface);
+        static void savePNGBuffer(unique_sdl_surface&& surface, std::string& buff);
     public:
         paint& loadRes();
         paint& preparePanel(const std::array<std::uint64_t, 5>& iconIds);

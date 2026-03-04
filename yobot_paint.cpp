@@ -119,15 +119,14 @@ namespace yobot {
         return instance;
     }
 
-    std::string paint::savePNGBuffer(unique_sdl_surface&& surface)
+    void paint::savePNGBuffer(unique_sdl_surface&& surface, std::string& buff)
     {
         auto ostream = SDL_IOFromDynamicMem();
         IMG_SavePNG_IO(surface.get(), ostream, false);
         auto props = SDL_GetIOProperties(ostream);
         auto internal_ptr = (char*)SDL_GetPointerProperty(props, SDL_PROP_IOSTREAM_DYNAMIC_MEMORY_POINTER, nullptr);
-        auto buff = std::string(internal_ptr, SDL_GetIOSize(ostream));
+        buff.assign(internal_ptr, SDL_GetIOSize(ostream));
         SDL_CloseIO(ostream);
-        return buff;
     }
 
     paint& paint::loadRes()

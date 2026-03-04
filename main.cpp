@@ -80,7 +80,7 @@ inline auto PrepareRenderData(const json& statusData, const json& bossData)
     return std::make_tuple(lap, lapFlags, phase, totalProgesses, bossProgreses);
 }
 
-inline std::string Progress(const json& statusData, const json& bossData)
+inline void Progress(const json& statusData, const json& bossData, std::string& body)
 {
     auto&& [lap, lapFlags, phase, totalProgesses, bossProgreses] = PrepareRenderData(statusData, bossData);
     std::promise<yobot::unique_sdl_surface> drawPromise;
@@ -91,7 +91,7 @@ inline std::string Progress(const json& statusData, const json& bossData)
             .refreshBossProgress(lap, lapFlags, bossProgreses);
     };
     yobot::paint::getInstance().postDrawProcess(drawProcess, drawPromise);
-    return yobot::paint::savePNGBuffer(drawPromise.get_future().get());
+    yobot::paint::savePNGBuffer(drawPromise.get_future().get(), body);
 }
 
 int main(int argc, char const *argv[])
@@ -117,7 +117,7 @@ int main(int argc, char const *argv[])
         }).Get("/progress", [&](const httplib::Request& req, httplib::Response& resp) {
             std::shared_lock lock(mtBossData);
             auto data = json::parse(req.params.find("data")->second);
-            resp.body = Progress(data, bossData);
+            Progress(data, bossData, resp.body);
         }).Get("/quit", [](const httplib::Request& req, httplib::Response& resp) {
             yobot::paint::getInstance().postQuit();
         }).listen(DefaultHost, DefaultPort);
