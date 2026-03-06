@@ -29,6 +29,11 @@ find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
 find_package(SDL3_ttf CONFIG REQUIRED)
 
+if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin")
+    find_package(httplib CONFIG REQUIRED)
+    find_package(fmt CONFIG REQUIRED)
+endif()
+
 macro(get_git_hash _git_hash)
   find_package(Git QUIET)
   if(GIT_FOUND)
@@ -95,6 +100,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     target_link_libraries(${PROJECT_NAME} PRIVATE cpp-httplib)
+endif()
+
+if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin")
+    target_link_libraries(${PROJECT_NAME} PRIVATE httplib::httplib)
+    target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt-header-only)
 endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
