@@ -35,14 +35,14 @@ namespace yobot {
     {
         int w, h;
         TTF_GetTextSize(text, &w, &h);
-        return { rect.x + rect.w / 2 - w / 2.0f,rect.y + rect.h / 2 - h / 2.0f };
+        return { SDL_roundf(rect.x + rect.w / 2 - w / 2.0f), SDL_roundf(rect.y + rect.h / 2 - h / 2.0f) };
     }
 
     inline SDL_FPoint GetLeftCenterPos(TTF_Text* text, const SDL_FRect& rect)
     {
         int w, h;
         TTF_GetTextSize(text, &w, &h);
-        return { rect.x, rect.y + rect.h / 2 - h / 2.0f };
+        return { SDL_roundf(rect.x), SDL_roundf(rect.y + rect.h / 2 - h / 2.0f) };
     }
 
     inline auto toOKFAILED(bool flag)
