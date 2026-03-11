@@ -21,31 +21,31 @@ namespace yobot {
     using SDLTextDeleter = GenericDeleter<TTF_Text, TTF_DestroyText>;
     using unique_sdl_text = std::unique_ptr<TTF_Text, SDLTextDeleter>;
 
-    inline bool SDLSetDrawColor(SDL_Renderer* renderer, const SDL_Color& color) noexcept
+    static inline bool SDLSetDrawColor(SDL_Renderer* renderer, const SDL_Color& color) noexcept
     {
         return SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     }
 
-    inline bool SDLSetTextColor(TTF_Text* text, const SDL_Color& color) noexcept
+    static inline bool SDLSetTextColor(TTF_Text* text, const SDL_Color& color) noexcept
     {
         return TTF_SetTextColor(text, color.r, color.g, color.b, color.a);
     }
 
-    inline SDL_FPoint GetCenterPos(TTF_Text* text, const SDL_FRect& rect)
+    static inline SDL_FPoint GetCenterPos(TTF_Text* text, const SDL_FRect& rect)
     {
         int w, h;
         TTF_GetTextSize(text, &w, &h);
         return { SDL_roundf(rect.x + rect.w / 2 - w / 2.0f), SDL_roundf(rect.y + rect.h / 2 - h / 2.0f) };
     }
 
-    inline SDL_FPoint GetLeftCenterPos(TTF_Text* text, const SDL_FRect& rect)
+    static inline SDL_FPoint GetLeftCenterPos(TTF_Text* text, const SDL_FRect& rect)
     {
         int w, h;
         TTF_GetTextSize(text, &w, &h);
         return { SDL_roundf(rect.x), SDL_roundf(rect.y + rect.h / 2 - h / 2.0f) };
     }
 
-    inline auto toOKFAILED(bool flag)
+    static inline auto toOKFAILED(bool flag)
     {
         return flag ? "\033[1;32mOK\033[0m" : "\033[1;31mFAILED\033[0m";
     }
@@ -145,13 +145,13 @@ namespace yobot {
         return *this;
     }
 
-    inline unique_sdl_surface SaveSurface(SDL_Renderer* renderer)
+    static inline unique_sdl_surface SaveSurface(SDL_Renderer* renderer)
     {
         SDL_SetRenderViewport(renderer, nullptr);
         return unique_sdl_surface(SDL_RenderReadPixels(renderer, nullptr));
     }
 
-    inline void ClearPanel(SDL_Renderer* renderer)
+    static inline void ClearPanel(SDL_Renderer* renderer)
     {
         SDLSetDrawColor(renderer, halfTransparent);
         SDL_RenderClear(renderer);
@@ -160,7 +160,7 @@ namespace yobot {
         SDL_RenderFillRect(renderer, nullptr);
     }
 
-    inline void RenderPanelRow(SDL_Renderer* renderer, SDL_FRect& iconRect, const uint64_t& id, SDL_FRect& HPRect)
+    static inline void RenderPanelRow(SDL_Renderer* renderer, SDL_FRect& iconRect, const uint64_t& id, SDL_FRect& HPRect)
     {
         SDLSetDrawColor(renderer, halfTransparent);
         iconRect.y -= (float)(iconRect.h + margin.x * 2);
@@ -177,7 +177,7 @@ namespace yobot {
         SDL_RenderFillRect(renderer, &lapRect);
     }
 
-    inline void RenderPanelHeader(SDL_Renderer* renderer, TTF_TextEngine* textEngine, const SDL_FRect& iconRect, const SDL_FRect& HPRect)
+    static inline void RenderPanelHeader(SDL_Renderer* renderer, TTF_TextEngine* textEngine, const SDL_FRect& iconRect, const SDL_FRect& HPRect)
     {
         auto phaseRect = SDL_FRect{ iconRect.x, (float)(margin.x), iconRect.w, iconRect.y - margin.x * 2 };
         SDLSetDrawColor(renderer, transparent);
@@ -211,7 +211,7 @@ namespace yobot {
         return *this;
     }
 
-    inline std::string getCountDownStr(std::uint64_t t)
+    static inline std::string getCountDownStr(std::uint64_t t)
     {
         auto sec = std::chrono::seconds(t);
         if (auto d = std::chrono::floor<std::chrono::days>(sec); d.count() != 0)

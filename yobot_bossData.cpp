@@ -12,7 +12,7 @@ namespace yobot {
     using BossData = std::tuple<std::string_view, json::array_t, json::array_t, json::array_t, json::array_t, json::array_t>;
 
     template<typename T, typename... Args>
-    static auto& GetThreadBuffers(Args&&... args)
+    static inline auto& GetThreadBuffers(Args&&... args)
     {
         static tbb::enumerable_thread_specific<T> buffers([...args = std::forward<Args>(args)]() {
             return T(args...);
@@ -21,13 +21,13 @@ namespace yobot {
     }
 
     template<std::size_t N>
-    static auto& GetLimitedArena()
+    static inline auto& GetLimitedArena()
     {
         static tbb::task_arena arena(N);
         return arena;
     }
 
-    inline std::int64_t toSeconds(const json &t)
+    static inline std::int64_t toSeconds(const json &t)
     {
         std::chrono::sys_time<std::chrono::seconds> ret;
         std::istringstream(t.get<std::string>())
