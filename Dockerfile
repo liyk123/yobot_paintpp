@@ -64,6 +64,7 @@ ARG TARGET_NAME=yobot_paintpp
 
 RUN apt-get update && apt-get upgrade -y && apt-get autoremove -y && \
     apt-get install -y --no-install-recommends ca-certificates libstdc++6 adduser libpng-dev && \
+    apt-get install -y mesa-vulkan-drivers && \
     apt-get clean && \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo 'Asia/Shanghai' > /etc/timezone
