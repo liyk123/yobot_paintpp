@@ -31,8 +31,8 @@ COPY . /src
 
 # Download runtime assets into the source tree so they end up in the final image
 RUN mkdir -p /src/icon /src/font && \
-    curl -fSL "https://redive.estertion.win/icon/unit/000000.webp" -o /src/icon/000000.webp && \
-    curl -fSL "https://github.com/jsntn/webfonts/raw/refs/heads/master/NotoSansSC-Regular.ttf" -o /src/font/NotoSansSC-Regular.ttf
+    curl -fSL "https://redive.estertion.win/icon/unit/000000.webp" -o /src/icon/000000.webp || true &&\
+    curl -fSL "https://github.com/jsntn/webfonts/raw/refs/heads/master/NotoSansSC-Regular.ttf" -o /src/font/NotoSansSC-Regular.ttf || true
 
 # Install and bootstrap vcpkg
 RUN git clone --depth 1 https://github.com/microsoft/vcpkg.git /vcpkg && \
