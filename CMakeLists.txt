@@ -25,10 +25,14 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(TBB CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_package(httplib CONFIG REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
 find_package(SDL3_image CONFIG REQUIRED)
 find_package(SDL3_ttf CONFIG REQUIRED)
+
+if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin")
+    find_package(httplib CONFIG REQUIRED)
+    find_package(fmt CONFIG REQUIRED)
+endif()
 
 macro(get_git_hash _git_hash)
   find_package(Git QUIET)
@@ -89,11 +93,19 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     TBB::tbbmalloc
     OpenSSL::SSL
     OpenSSL::Crypto
-    httplib::httplib
     SDL3::SDL3
     $<IF:$<TARGET_EXISTS:SDL3_image::SDL3_image-shared>,SDL3_image::SDL3_image-shared,SDL3_image::SDL3_image-static>
     SDL3_ttf::SDL3_ttf
 )
+
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    target_link_libraries(${PROJECT_NAME} PRIVATE cpp-httplib)
+endif()
+
+if(CMAKE_SYSTEM_NAME MATCHES "Windows|Darwin")
+    target_link_libraries(${PROJECT_NAME} PRIVATE httplib::httplib)
+    target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt-header-only)
+endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
 
