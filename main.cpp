@@ -115,8 +115,14 @@ int main(int argc, char const *argv[])
             std::unique_lock lock(mtBossData);
             Update(bossData);
         }).Get("/progress", [&](const httplib::Request& req, httplib::Response& resp) {
+            auto it = req.params.find("data");
+            if (it == req.params.end())
+            {
+                resp.status = 500;
+                return;
+            }
+            auto data = json::parse(it->second);
             std::shared_lock lock(mtBossData);
-            auto data = json::parse(req.params.find("data")->second);
             Progress(data, bossData, resp.body);
         }).Get("/quit", [](const httplib::Request& req, httplib::Response& resp) {
             yobot::paint::getInstance().postQuit();
