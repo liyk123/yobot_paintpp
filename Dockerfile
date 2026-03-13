@@ -87,7 +87,7 @@ RUN adduser --disabled-password --gecos "" appuser || true && \
     chmod +x ${CMAKE_INSTALL_PREFIX}/bin/${TARGET_NAME}
 
 ENV PATH=${CMAKE_INSTALL_PREFIX}/bin:$PATH \
-    SDL_VIDEODRIVER=dummy
+    SDL_VIDEO_DRIVER=offscreen
 WORKDIR /app
 
 # Expose the requested port
