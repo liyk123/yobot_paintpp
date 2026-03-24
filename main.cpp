@@ -11,7 +11,7 @@ constexpr auto DefaultArea = yobot::area::cn;
 constexpr auto DefaultHost = "0.0.0.0";
 constexpr auto DefaultPort = 9540;
 
-inline bool DownloadBinaryFile(const std::string_view& host, const std::string_view& getPath, const std::string_view& savePath)
+static bool DownloadBinaryFile(const std::string_view& host, const std::string_view& getPath, const std::string_view& savePath)
 {
     httplib::Client client(host.data());
     client.set_follow_location(true);
@@ -25,7 +25,7 @@ inline bool DownloadBinaryFile(const std::string_view& host, const std::string_v
     return ret;
 }
 
-inline void InitEnv()
+static void InitEnv()
 {
     spdlog::default_logger()->set_pattern(LogPattern);
     std::filesystem::create_directory(IconDir);
@@ -42,7 +42,7 @@ inline void InitEnv()
     }
 }
 
-inline void Update(json& bossData)
+static void Update(json& bossData)
 {
     yobot::updateBossData(bossData);
     SPDLOG_INFO(bossData["boss_id"][DefaultArea].dump());
@@ -54,7 +54,7 @@ inline void Update(json& bossData)
     drawPromise.get_future().wait();
 }
 
-inline auto PrepareRenderData(const json& statusData, const json& bossData)
+static auto PrepareRenderData(const json& statusData, const json& bossData)
 {
     auto lap = statusData.at("lap").get<json::number_integer_t>();
     auto phase = yobot::getPhase(bossData, lap, DefaultArea);
@@ -80,7 +80,7 @@ inline auto PrepareRenderData(const json& statusData, const json& bossData)
     return std::make_tuple(lap, lapFlags, phase, totalProgesses, bossProgreses);
 }
 
-inline void Progress(const json& statusData, const json& bossData, std::string& body)
+static void Progress(const json& statusData, const json& bossData, std::string& body)
 {
     auto&& [lap, lapFlags, phase, totalProgesses, bossProgreses] = PrepareRenderData(statusData, bossData);
     std::promise<yobot::unique_sdl_surface> drawPromise;
