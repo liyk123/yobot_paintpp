@@ -124,6 +124,7 @@ int main(int argc, char const *argv[])
             auto data = json::parse(it->second);
             std::shared_lock lock(mtBossData);
             Progress(data, bossData, resp.body);
+            resp.set_header("Content-Type", "image/png");
         }).Get("/quit", [](const httplib::Request& req, httplib::Response& resp) {
             yobot::paint::getInstance().postQuit();
         }).listen(DefaultHost, DefaultPort);
